@@ -9,3 +9,8 @@ export class CreateUserDto implements CreateUserInput {
     return createUserSchema.safeParse(data);
   }
 }
+
+export class CreateOAuhUser {
+  email: string;
+  name: string;
+}

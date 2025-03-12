@@ -28,6 +28,20 @@ export class AuthService {
     return null;
   }
 
+  async validateOAuthUser(userDetails: any) {
+    const { email, name } = userDetails;
+    
+    let user = await this.userService.findByEmail(email);
+
+    if (user) {
+      return user;
+    } else {
+      const newUser = await this.userService.createOAuth({ email, name });
+      user = await this.userService.findByEmail(newUser.email);
+      return user;
+    }
+  }
+
   async login(user: any) {
     const payload = { email: user.email, sub: user.id };
     

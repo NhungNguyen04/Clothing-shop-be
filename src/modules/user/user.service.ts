@@ -3,6 +3,7 @@ import { prisma } from '@/prisma/prisma';
 import { CreateUserInput, UpdateUserInput } from '@/schemas';
 import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
+import { CreateOAuhUser } from './dto/createUser';
 
 @Injectable()
 export class UserService {
@@ -17,6 +18,37 @@ export class UserService {
           email: createUserDto.email,
           name: createUserDto.name,
           password: hashedPassword,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (error) {
+      // Handle Prisma's unique constraint error
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = error.meta?.target as string[];
+          if (target?.includes('email')) {
+            throw new ConflictException('User with this email already exists');
+          }
+        }
+      }
+      throw error; // Rethrow other errors
+    }
+  }
+
+  async createOAuth(createOAuth: CreateOAuhUser) {
+    try {
+      
+      return await prisma.user.create({
+        data: {
+          email: createOAuth.email,
+          name: createOAuth.name,
+          isOAuth: true,
         },
         select: {
           id: true,
