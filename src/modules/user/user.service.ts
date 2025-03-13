@@ -28,7 +28,6 @@ export class UserService {
         },
       });
     } catch (error) {
-      // Handle Prisma's unique constraint error
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const target = error.meta?.target as string[];
@@ -37,7 +36,7 @@ export class UserService {
           }
         }
       }
-      throw error; // Rethrow other errors
+      throw error; 
     }
   }
 
@@ -78,6 +77,7 @@ export class UserService {
         id: true,
         email: true,
         name: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -91,6 +91,7 @@ export class UserService {
         id: true,
         email: true,
         name: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
