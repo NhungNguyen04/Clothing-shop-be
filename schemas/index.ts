@@ -8,6 +8,9 @@ export const createUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
+export const createOAuthSchema = createUserSchema.omit({ password: true });
+export type CreateOAuthInput = z.infer<typeof createOAuthSchema>;
+
 export const updateUserSchema = createUserSchema.partial();
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
@@ -29,15 +32,22 @@ export const updateSellerSchema = z.object({
 export type UpdateSellerInput = z.infer<typeof updateSellerSchema>;
 
 // Product update schema
-export const updateProductSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }).optional(),
-  description: z.string().min(10, { message: "Description must be at least 10 characters" }).optional(),
-  price: z.number().positive({ message: "Price must be positive" }).optional(),
-  stockQuantity: z.number().int().nonnegative({ message: "Stock quantity must be non-negative" }).optional(),
-  image: z.array(z.string()).optional(),
-  category: z.enum(['men', 'women', 'kids']).optional(),
-  subCategory: z.enum(['topwear', 'bottomwear', 'winterwear']).optional(),
-  size: z.array(z.enum(['S', 'M', 'L', 'XL', 'XXL'])).optional()
+export const createProductSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  description: z.string().min(10, { message: "Description must be at least 10 characters" }),
+  price: z.number().positive({ message: "Price must be positive" }),
+  image: z.array(z.string()),
+  category: z.enum(['men', 'women', 'kids']),
+  subCategory: z.enum(['topwear', 'bottomwear', 'winterwear']),
+  sellerId: z.string().min(1, { message: "SellerId is required" }),
+  stockSize: z.array(z.object({
+    size: z.enum(['S', 'M', 'L', 'XL', 'XXL']),
+    quantity: z.number().int().nonnegative()
+  }))
 });
+
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const updateProductSchema = createProductSchema.partial();
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

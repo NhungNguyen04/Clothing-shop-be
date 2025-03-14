@@ -46,6 +46,11 @@ async function bootstrap() {
     next();
   });
 
+  // Add midleware to log all console.log
+  console.log = (message: string) => {
+    console.info(`LOG: ${message}`);
+  };
+
   await app.listen(process.env.PORT ?? 3300);
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log('=== STARTUP: Application successfully started ===');

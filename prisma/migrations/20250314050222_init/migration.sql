@@ -18,6 +18,7 @@ CREATE TABLE "User" (
     "image" TEXT,
     "password" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'CUSTOMER',
+    "isOAuth" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -48,10 +49,23 @@ CREATE TABLE "Product" (
     "subCategory" "SubCategory" NOT NULL,
     "size" "Size"[],
     "sellerId" TEXT NOT NULL,
+    "ratings" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SizeStock" (
+    "id" TEXT NOT NULL,
+    "size" "Size" NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "productId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SizeStock_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -65,3 +79,6 @@ ALTER TABLE "Seller" ADD CONSTRAINT "Seller_userId_fkey" FOREIGN KEY ("userId") 
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "Seller"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SizeStock" ADD CONSTRAINT "SizeStock_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

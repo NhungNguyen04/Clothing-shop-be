@@ -1,15 +1,13 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, HttpStatus, HttpException } from '@nestjs/common';
 import { SellerService } from './seller.service';
-import { CreateSellerDto } from './dto/creteSeller';
-import { UpdateSellerDto } from './dto/updateSeller.dto';
-import { createSellerSchema, updateSellerSchema } from '@/schemas';
+import { CreateSellerInput, createSellerSchema, UpdateSellerInput, updateSellerSchema } from '@/schemas';
 
 @Controller('sellers')
 export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
 
   @Post()
-  async create(@Body() createSellerDto: CreateSellerDto) {
+  async create(@Body() createSellerDto: CreateSellerInput) {
     try {
       const validationResult = createSellerSchema.safeParse(createSellerDto);
       
@@ -77,7 +75,7 @@ export class SellerController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateSellerDto: UpdateSellerDto) {
+  async update(@Param('id') id: string, @Body() updateSellerDto: UpdateSellerInput) {
     try {
       const validationResult = updateSellerSchema.safeParse(updateSellerDto);
       

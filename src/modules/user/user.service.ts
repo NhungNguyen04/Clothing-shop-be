@@ -1,13 +1,13 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { prisma } from '@/prisma/prisma';
-import { CreateUserInput, UpdateUserInput } from '@/schemas';
+import { CreateOAuthInput, CreateUserInput, UpdateUserInput } from '@/schemas';
 import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
-import { CreateOAuhUser } from './dto/createUser';
+import { SellerService } from '../seller/seller.service';
 
 @Injectable()
 export class UserService {
-  constructor() {}
+  constructor(private readonly sellerService: SellerService) {}
   
   async create(createUserDto: CreateUserInput) {
     try {
@@ -40,7 +40,7 @@ export class UserService {
     }
   }
 
-  async createOAuth(createOAuth: CreateOAuhUser) {
+  async createOAuth(createOAuth: CreateOAuthInput) {
     try {
       
       return await prisma.user.create({
@@ -141,6 +141,13 @@ export class UserService {
     
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    if (user.role === 'SELLER') {
+      const seller = await prisma.seller.findFirst({ where: { userId: id } });
+      if (seller) {
+        await this.sellerService.remove(seller.id);
+      }
     }
     
     return prisma.user.delete({
