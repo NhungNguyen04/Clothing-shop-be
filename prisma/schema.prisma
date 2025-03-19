@@ -19,6 +19,12 @@ enum Category {
   kids
 }
 
+enum SellerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SubCategory {
   topwear
   bottomwear
@@ -53,49 +59,52 @@ model User {
 }
 
 model Seller {
-  id        String   @id @default(cuid())
-  userId   String   @unique
-  user      User    @relation(fields: [userId], references: [id])
-  address   String
-  phone     String
-  products  Product[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id])
+  email       String?
+  address     String
+  phone       String
+  managerName String?
+  postalCode  String?
+  status      SellerStatus?
+  products    Product[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
-
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  price       Float
+  id            String      @id @default(cuid())
+  name          String
+  description   String
+  price         Float
   stockQuantity Int
-  image       String []
-  category    Category
-  subCategory SubCategory
-  stockSize SizeStock[]
-  sellerId    String
-  seller      Seller   @relation(fields: [sellerId], references: [id])
-  ratings     Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  image         String[]
+  category      Category
+  subCategory   SubCategory
+  stockSize     SizeStock[]
+  sellerId      String
+  seller        Seller      @relation(fields: [sellerId], references: [id])
+  ratings       Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model SizeStock {
-  id          String   @id @default(cuid())
-  size        Size
-  quantity    Int
-  productId   String
-  product     Product @relation(fields: [productId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  size      Size
+  quantity  Int
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SystemParamater {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  description String? 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
