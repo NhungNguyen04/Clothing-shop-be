@@ -19,7 +19,6 @@ export class SellerController {
           data: null
         };
       }
-      
       const result = await this.sellerService.create(validationResult.data);
       return result;
     } catch (error) {

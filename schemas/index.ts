@@ -39,6 +39,8 @@ export const createSellerSchema = z.object({
     .string()
     .min(3, { message: 'Manager Name must be at least 3 characters' }),
 
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+
   postalCode: z
     .string()
     .min(5, { message: 'Postal Code must be at least 5 characters' })
