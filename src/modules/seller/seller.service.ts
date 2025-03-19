@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { prisma } from '@/prisma/prisma';
 import { Prisma } from '@prisma/client';
 import { CreateSellerInput, UpdateSellerInput } from '@/schemas';
@@ -9,19 +15,21 @@ export class SellerService {
 
   async create(createSellerDto: CreateSellerInput) {
     try {
-
       const user = await prisma.user.findUnique({
-        where: { id: createSellerDto.userId }
+        where: { id: createSellerDto.userId },
       });
 
       if (!user) {
-        throw new NotFoundException(`User with ID ${createSellerDto.userId} not found`);
+        throw new NotFoundException(
+          `User with ID ${createSellerDto.userId} not found`,
+        );
       }
-      
+
       const seller = await prisma.seller.create({
         data: {
           userId: user?.id,
           ...(() => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { userId, ...rest } = createSellerDto;
             return rest;
           })(),
@@ -33,16 +41,17 @@ export class SellerService {
       await prisma.user.update({
         where: { id: seller.userId },
         data: { role: 'SELLER' },
-        
       });
-    
+
       return { seller };
     } catch (error) {
-      if (error instanceof (Prisma.PrismaClientKnownRequestError)) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const target = error.meta?.target as string[];
           if (target?.includes('userId')) {
-            throw new ConflictException('Seller with this user ID already exists');
+            throw new ConflictException(
+              'Seller with this user ID already exists',
+            );
           }
         }
       }
@@ -60,22 +69,21 @@ export class SellerService {
             name: true,
             price: true,
             image: true,
-            category: true
-          }
-        }
+            category: true,
+          },
+        },
       },
     });
 
-    return {sellers};
+    return { sellers };
   }
 
   async findOne(id: string) {
-
     const seller = await prisma.seller.findUnique({
       where: { id },
-      include: { 
+      include: {
         user: true,
-        products: true 
+        products: true,
       },
     });
 
@@ -83,15 +91,15 @@ export class SellerService {
       throw new NotFoundException(`Seller with ID ${id} not found`);
     }
 
-    return {seller};
+    return { seller };
   }
 
   async findByUserId(userId: string) {
     const seller = await prisma.seller.findUnique({
       where: { userId },
-      include: { 
+      include: {
         user: true,
-        products: true 
+        products: true,
       },
     });
 
@@ -99,13 +107,13 @@ export class SellerService {
       throw new NotFoundException(`Seller with user ID ${userId} not found`);
     }
 
-    return {seller};
+    return { seller };
   }
 
   async update(id: string, updateSellerDto: UpdateSellerInput) {
     // Check if seller exists
     const existingSeller = await prisma.seller.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!existingSeller) {
@@ -117,13 +125,13 @@ export class SellerService {
       data: updateSellerDto,
     });
 
-    return {updatedSeller};
+    return { updatedSeller };
   }
 
   async remove(id: string) {
     const seller = await prisma.seller.findUnique({
       where: { id },
-      include: { products: true }
+      include: { products: true },
     });
 
     if (!seller) {
@@ -148,6 +156,6 @@ export class SellerService {
       data: { role: 'CUSTOMER' },
     });
 
-    return {deletedSeller};
+    return { deletedSeller };
   }
 }
