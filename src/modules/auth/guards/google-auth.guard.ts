@@ -1,22 +1,38 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable, type ExecutionContext, Logger } from "@nestjs/common"
+import { AuthGuard } from "@nestjs/passport"
 
 @Injectable()
-export class GoogleAuthGuard extends AuthGuard('google') {
-  constructor() {
-    super();
-  }
+export class GoogleAuthGuard extends AuthGuard("google") {
+  private readonly logger = new Logger(GoogleAuthGuard.name)
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const activate = (await super.canActivate(context)) as boolean;
-    const request = context.switchToHttp().getRequest();
-    
-    // Don't try to establish a session on the callback URL
-    if (request.url.includes('/callback')) {
-      return activate;
+    const request = context.switchToHttp().getRequest()
+
+    // Get platform and redirectUri from query params
+    const platform = request.query.platform || "web"
+    const redirectUri = request.query.redirectUri
+
+    this.logger.log(`GoogleAuthGuard: platform=${platform}, redirectUri=${redirectUri}`)
+
+    // Store platform info in the state parameter
+    const stateData = {
+      platform,
+      redirectUri,
+      timestamp: Date.now(),
     }
-    
-    await super.logIn(request);
-    return activate;
+
+    // Encode state as base64
+    const state = Buffer.from(JSON.stringify(stateData)).toString("base64")
+
+    // Set the state parameter in the auth options
+    const authOptions = {
+      state,
+    }
+
+    // Store auth options in the request for Passport to use
+    request.authInfo = authOptions
+
+    return super.canActivate(context) as Promise<boolean>
   }
 }
+
