@@ -57,6 +57,27 @@ export class ProductController {
     }
   }
 
+  @Get('/seller/:id')
+  async findBySeller(@Param('id') id: string) {
+    try {
+      const result = await this.productService.findBySeller(id)
+      return {
+        success: true,
+        message: 'Product fetched successfully',
+        error: null,
+        data: result
+      }
+    }
+    catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to process request',
+        error: error.response?.error || error.name,
+        data: null
+      };
+    }
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {

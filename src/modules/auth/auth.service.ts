@@ -17,7 +17,7 @@ export class AuthService {
     const user = await this.userService.findByEmail(email)
 
     if (!user) {
-      return null
+      return null;
     }
 
     if (user.password) {
@@ -56,6 +56,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role
       },
       access_token: this.jwtService.sign(payload),
       temp_code: tempCode, // This can be used by mobile clients
