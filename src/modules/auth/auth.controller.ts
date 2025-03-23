@@ -23,6 +23,7 @@ export class AuthController {
     // The guard will handle the redirect
   }
 
+  @UseGuards(GoogleAuthGuard)
   @Get("google/callback")
   async googleAuthCallback(@Req() req, @Res() res: Response) {
     Logger.log("Received Google callback")
