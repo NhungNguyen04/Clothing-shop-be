@@ -10,7 +10,7 @@ export class SellerController {
   async create(@Body() createSellerDto: CreateSellerInput) {
     try {
       const validationResult = createSellerSchema.safeParse(createSellerDto);
-      
+
       if (!validationResult.success) {
         return {
           success: false,
@@ -19,7 +19,6 @@ export class SellerController {
           data: null
         };
       }
-      
       const result = await this.sellerService.create(validationResult.data);
       return result;
     } catch (error) {

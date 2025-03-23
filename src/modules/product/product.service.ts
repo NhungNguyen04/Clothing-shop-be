@@ -49,7 +49,7 @@ export class ProductService {
       },
       include: { 
         seller: true,
-        stockSize: true // Include the stockSize relation in the response
+        stockSize: true, // Include the stockSize relation in the response
       },
     });
 
@@ -145,5 +145,20 @@ export class ProductService {
     }
 
     return prisma.product.delete({ where: { id } });
+  }
+
+  async findBySeller(id: string) {
+    const products = await prisma.product.findMany(
+  {
+      where: {
+        sellerId: id,
+      },
+  } 
+)
+    if (!products) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    return products
   }
 }
