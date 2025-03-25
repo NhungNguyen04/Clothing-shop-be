@@ -24,43 +24,53 @@ export class AuthController {
   }
 
   @UseGuards(GoogleAuthGuard)
-  @Get("google/callback")
-  async googleAuthCallback(@Req() req, @Res() res: Response) {
-    Logger.log("Received Google callback")
+@Get("google/callback")
+async googleAuthCallback(@Req() req, @Res() res: Response) {
+  Logger.log("Received Google callback")
+  Logger.log(`User platform: ${req.user?.platform}, redirectUri: ${req.user?.redirectUri}`)
 
-    try {
-      // Get the user from the request (set by Passport)
-      const user = req.user
+  try {
+    // Get the user from the request (set by Passport)
+    const user = req.user
 
-      if (!user) {
-        Logger.error("No user found in request")
-        return res.redirect(`${process.env.FRONTEND_URL}/auth-error?message=authentication-failed`)
-      }
-
-      // Extract platform and redirectUri from the user object (set in Google strategy)
-      const platform = user.platform || "web"
-      const redirectUri = user.redirectUri || process.env.FRONTEND_URL
-
-      Logger.log(`User authenticated: ${user.email}, platform: ${platform}, redirectUri: ${redirectUri}`)
-
-      // Generate JWT token
-      const loginResult = await this.authService.login(user)
-
-      if (platform === "mobile") {
-        // For mobile, redirect to the app's deep link with the token
-        const mobileRedirectUrl = `${redirectUri}?token=${loginResult.access_token}`
-        Logger.log(`Redirecting to mobile app: ${mobileRedirectUrl}`)
-        return res.redirect(mobileRedirectUrl)
-      } else {
-        // For web
-        Logger.log(`Redirecting to web: ${process.env.FRONTEND_URL}/auth-success`)
-        return res.redirect(`${process.env.FRONTEND_URL}/auth-success?token=${loginResult.access_token}`)
-      }
-    } catch (error) {
-      Logger.error(`Error in Google callback: ${error.message}`)
-      return res.redirect(`${process.env.FRONTEND_URL}/auth-error?message=server-error`)
+    if (!user) {
+      Logger.error("No user found in request")
+      return res.redirect(`${process.env.FRONTEND_URL}/auth-error?message=authentication-failed`)
     }
+
+    // Extract platform and redirectUri from the user object (set in Google strategy)
+    const platform = user.platform || "web"
+    const redirectUri = user.redirectUri || process.env.FRONTEND_URL
+
+    Logger.log(`User authenticated: ${user.email}, platform: ${platform}, redirectUri: ${redirectUri}`)
+
+    // Generate JWT token
+    const loginResult = await this.authService.login(user)
+
+    if (platform === "mobile") {
+      // IMPORTANT CHANGE: For mobile, we need to use a specially formatted URL
+      // The token should be properly included in the query parameters
+      let mobileRedirectUrl = redirectUri
+      
+      // Ensure we're adding parameters correctly - if redirectUri already has parameters
+      if (redirectUri.includes('?')) {
+        mobileRedirectUrl = `${redirectUri}&token=${loginResult.access_token}`
+      } else {
+        mobileRedirectUrl = `${redirectUri}?token=${loginResult.access_token}`
+      }
+      
+      Logger.log(`Redirecting to mobile app: ${mobileRedirectUrl}`)
+      return res.redirect(mobileRedirectUrl)
+    } else {
+      // For web
+      Logger.log(`Redirecting to web: ${process.env.FRONTEND_URL}/auth-success`)
+      return res.redirect(`${process.env.FRONTEND_URL}/auth-success?token=${loginResult.access_token}`)
+    }
+  } catch (error) {
+    Logger.error(`Error in Google callback: ${error.message}`)
+    return res.redirect(`${process.env.FRONTEND_URL}/auth-error?message=server-error`)
   }
+}
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
