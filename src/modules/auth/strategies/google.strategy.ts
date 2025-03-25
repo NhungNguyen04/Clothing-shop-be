@@ -1,20 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback, StrategyOptions } from 'passport-google-oauth20';
+import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { AuthService } from '../auth.service';
 import { Request } from 'express';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+  private readonly logger = new Logger(GoogleStrategy.name);
+
   constructor(private authService: AuthService) {
-    console.log('- callback url', process.env.GOOGLE_CALLBACK_URL);
     super({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
       scope: ['email', 'profile'],
       passReqToCallback: true,
-      session: false,
+      state: true
     } as any);
   }
 
@@ -25,54 +26,84 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
-    console.log('google strategy validate', profile);
+    this.logger.log(`Google strategy validate called`);
+    this.logger.log(`Request query: ${JSON.stringify(req.query)}`);
+    this.logger.log(`Request state: ${req.query.state}`);
 
     const { name, emails, photos } = profile;
     
-    // Determine if this is a mobile request and get the redirect URI
+    // Start with default values
     let platform = 'web';
     let redirectUri = process.env.FRONTEND_URL;
     
-    // Check state parameter which may contain our stored redirect URI
+    // Try to get platform/redirectUri from state parameter
     if (req.query.state) {
       try {
-        const state = JSON.parse(decodeURIComponent(req.query.state as string));
-        if (state.redirectUri) {
+        // State can either be a string or already parsed object
+        let state;
+        if (typeof req.query.state === 'string') {
+          state = JSON.parse(decodeURIComponent(req.query.state));
+        } else {
+          state = req.query.state;
+        }
+        
+        this.logger.log(`Parsed state: ${JSON.stringify(state)}`);
+        
+        if (state && state.platform) {
+          platform = state.platform;
+          this.logger.log(`Found platform in state: ${platform}`);
+        }
+        
+        if (state && state.redirectUri) {
           redirectUri = state.redirectUri;
-          // If it starts with "exp:" it's a mobile app
-          if (redirectUri && redirectUri.startsWith('exp:')) {
-            platform = 'mobile';
-          }
+          this.logger.log(`Found redirectUri in state: ${redirectUri}`);
         }
       } catch (e) {
-        console.error('Error parsing state parameter:', e);
+        this.logger.error(`Error parsing state parameter: ${e.message}`);
       }
     }
+    
+    // Check if URL parameters contain platform/redirectUri 
+    // (fallback - should use state instead)
+    if (req.query.platform) {
+      platform = req.query.platform as string;
+      this.logger.log(`Found platform in query: ${platform}`);
+    }
+    
+    if (req.query.redirect_uri) {
+      redirectUri = req.query.redirect_uri as string;
+      this.logger.log(`Found redirectUri in query: ${redirectUri}`);
+    }
+    
+    // Log final values
+    this.logger.log(`Final platform: ${platform}`);
+    this.logger.log(`Final redirectUri: ${redirectUri}`);
 
     const user = {
       email: emails[0].value,
       name: `${name.givenName} ${name.familyName}`,
       picture: photos[0].value,
       accessToken,
-      // Add the platform and redirectUri to the user object
       platform,
       redirectUri
     };
 
+    // Get or create user in database
     const userFromDb = await this.authService.validateOAuthUser(user);
-    console.log('userFromDb', userFromDb);
+    this.logger.log(`User from DB: ${JSON.stringify(userFromDb)}`);
 
     if (!userFromDb) {
       return done(null, false);
     }
     
-    // Pass the platform and redirectUri to the controller
+    // IMPORTANT: Always override the platform and redirectUri with our values
     const userWithRedirectInfo = {
       ...userFromDb,
       platform,
       redirectUri
     };
     
-    done(null, userWithRedirectInfo);
+    this.logger.log(`Final user with redirect info: ${JSON.stringify(userWithRedirectInfo)}`);
+    return done(null, userWithRedirectInfo);
   }
 }
