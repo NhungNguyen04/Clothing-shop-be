@@ -12,6 +12,14 @@ import { UploadController } from './modules/upload/upload.controller';
 import { UploadService } from './modules/upload/upload.service';
 import { UploadModule } from './modules/upload/upload.module';
 import { ConfigModule } from '@nestjs/config';
+import { OrderController } from './order/order.controller';
+import { OrderDetailController } from './order-detail/order-detail.controller';
+import { ReviewController } from './review/review.controller';
+import { ShipmentController } from './shipment/shipment.controller';
+import { OrderModule } from './order/order.module';
+import { OrderDetailModule } from './order-detail/order-detail.module';
+import { ReviewModule } from './review/review.module';
+import { ShipmentModule } from './shipment/shipment.module';
 
 @Module({
   imports: [
@@ -22,11 +30,19 @@ import { ConfigModule } from '@nestjs/config';
     UploadModule,
     ConfigModule.forRoot({
       isGlobal: true,
-    })
+    }),
+    OrderModule,
+    OrderDetailModule,
+    ReviewModule,
+    ShipmentModule
   ],
   controllers: [
     AppController,
-    UploadController
+    UploadController,
+    OrderController,
+    OrderDetailController,
+    ReviewController,
+    ShipmentController
   ],
   providers: [AppService, AuthService, JwtService, UploadService],
 })

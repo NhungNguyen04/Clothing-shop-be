@@ -81,8 +81,64 @@ export const createProductSchema = z.object({
   ),
 });
 
+export const createOrderSchema = z.object({
+  totalPrice: z.number().positive({ message: 'Total price must be positive' }),
+  status: z.string().min(1, { message: 'Status is required' }),
+  customerName: z.string().min(1, { message: 'Customer name is required' }),
+  phoneNumber: z.string().min(1, { message: 'Phone number is required' }),
+  address: z.string().min(5, { message: 'Address must be at least 5 characters' }),
+  orderDetails: z.array(
+    z.object({
+      productId: z.string().min(1, { message: 'ProductId is required' }),
+      size: z.string().min(1, { message: 'Size is required' }),
+      quantity: z.number().int().positive({ message: 'Quantity must be positive' }),
+      price: z.number().positive({ message: 'Price must be positive' }),
+    })
+  ),
+});
+
+
+
+export const createReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5, { message: 'Rating must be between 1 and 5' }),
+  comment: z.string().optional(),
+  reviewDate: z.date().default(new Date()),
+  productId: z.string().min(1, { message: 'ProductId is required' }),
+});
+
+export const createShipmentSchema = z.object({
+  status: z.string().min(1, { message: 'Status is required' }),
+  deliveryDate: z.date().optional(),
+  orderId: z.string().min(1, { message: 'OrderId is required' }),
+});
+
+
+
+
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductSchema.partial();
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+
+
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+export const updateOrderSchema = createOrderSchema.partial();
+
+export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
+
+
+export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+
+export const updateReviewSchema = createReviewSchema.partial();
+
+export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;
+
+
+export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
+
+export const updateShipmentSchema = createShipmentSchema.partial();
+
+export type UpdateShipmentInput = z.infer<typeof updateShipmentSchema>;
+
