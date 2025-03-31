@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
-import { CreateProductInput, createProductSchema } from "@/schemas";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { CreateProductInput, createProductSchema, UpdateProductInput } from "@/schemas";
 import { ProductService } from "./product.service";
 
 @Controller('products')
@@ -85,6 +85,26 @@ export class ProductController {
       return {
         success: true,
         message: 'Product fetched successfully',
+        error: null,
+        data: result
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to process request',
+        error: error.response?.error || error.name,
+        data: null
+      };
+    }
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateData: UpdateProductInput) {
+    try {
+      const result = await this.productService.update(id, updateData)
+      return {
+        success: true,
+        message: 'Product updated successfully',
         error: null,
         data: result
       }

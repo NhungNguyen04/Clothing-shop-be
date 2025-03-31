@@ -89,14 +89,13 @@ export class ProductService {
 
   async update(id: string, updateData: UpdateProductInput) {
     const product = await prisma.product.findUnique({ where: { id } });
-
+    console.log(product)
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
-
     const data: any = { ...updateData };
 
-    if (updateData.stockSize) {
+     if (updateData.stockSize) {
       const sizes = updateData.stockSize.map(item => item.size);
       const uniqueSizes = new Set(sizes);
       
@@ -117,9 +116,9 @@ export class ProductService {
         })),
       };
     }
-
-    return prisma.product.update({
+    return await prisma.product.update({
       where: { id },
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data,
       include: {
         seller: true,
@@ -153,6 +152,9 @@ export class ProductService {
       where: {
         sellerId: id,
       },
+      include: {
+        stockSize: true,
+      }
   } 
 )
     if (!products) {
