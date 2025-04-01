@@ -56,12 +56,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   seller    Seller?
+  Order     Order[]
 }
 
 model Seller {
   id          String        @id @default(cuid())
   userId      String        @unique
-  user        User          @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   email       String?
   address     String
   phone       String
@@ -71,6 +72,7 @@ model Seller {
   products    Product[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  Order       Order[]
 }
 
 model Product {
@@ -84,14 +86,13 @@ model Product {
   subCategory   SubCategory
   stockSize     SizeStock[]
   sellerId      String
-  seller        Seller      @relation(fields: [sellerId], references: [id])
+  seller        Seller      @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ratings       Int?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   Review Review[]
-
-  OrderDetail OrderDetail[]
+  Order  Order[]
 }
 
 model SizeStock {
@@ -99,7 +100,7 @@ model SizeStock {
   size      Size
   quantity  Int
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -114,49 +115,45 @@ model SystemParamater {
 }
 
 model Order {
-  id           String       @id @default(cuid())
-  orderDate    DateTime     @default(now())
+  id           String    @id @default(cuid())
+  orderDate    DateTime  @default(now())
+  orderCode    String
   totalPrice   Float
   status       String
   customerName String
   address      String
-  phoneNumber      String
-  orderDetails OrderDetail[]
+  phoneNumber  String
+  quantity     Int
+  price        Float
+  sellerId     String
+  seller       Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  size         String
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade) // Relation with Product
   shipment     Shipment?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
-model OrderDetail {
+model Review {
   id         String   @id @default(cuid())
+  rating     Int
+  comment    String?
+  reviewDate DateTime @default(now())
   productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  quantity   Int
-  price      Float
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id])
-  size String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
 
-model Review {
-  id        String   @id @default(cuid())
-  rating    Int
-  comment   String?
-  reviewDate DateTime @default(now())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model Shipment {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   status       String
   deliveryDate DateTime?
-  orderId      String   @unique
-  order        Order    @relation(fields: [orderId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  orderId      String    @unique
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

@@ -86,15 +86,13 @@ export const createOrderSchema = z.object({
   status: z.string().min(1, { message: 'Status is required' }),
   customerName: z.string().min(1, { message: 'Customer name is required' }),
   phoneNumber: z.string().min(1, { message: 'Phone number is required' }),
+  userId: z.string().min(1, { message: 'UserId is required' }),
   address: z.string().min(5, { message: 'Address must be at least 5 characters' }),
-  orderDetails: z.array(
-    z.object({
-      productId: z.string().min(1, { message: 'ProductId is required' }),
-      size: z.string().min(1, { message: 'Size is required' }),
-      quantity: z.number().int().positive({ message: 'Quantity must be positive' }),
-      price: z.number().positive({ message: 'Price must be positive' }),
-    })
-  ),
+  productId: z.string().min(1, { message: 'ProductId is required' }),
+  quantity: z.number().int().positive({ message: 'Quantity must be positive' }),
+  price: z.number().positive({ message: 'Price must be positive' }),
+  sellerId: z.string().min(1, { message: 'SellerId is required' }),
+  size: z.string().min(1, { message: 'Size is required' }),
 });
 
 

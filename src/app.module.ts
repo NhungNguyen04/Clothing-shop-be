@@ -13,11 +13,9 @@ import { UploadService } from './modules/upload/upload.service';
 import { UploadModule } from './modules/upload/upload.module';
 import { ConfigModule } from '@nestjs/config';
 import { OrderController } from './order/order.controller';
-import { OrderDetailController } from './order-detail/order-detail.controller';
 import { ReviewController } from './review/review.controller';
 import { ShipmentController } from './shipment/shipment.controller';
 import { OrderModule } from './order/order.module';
-import { OrderDetailModule } from './order-detail/order-detail.module';
 import { ReviewModule } from './review/review.module';
 import { ShipmentModule } from './shipment/shipment.module';
 
@@ -32,7 +30,6 @@ import { ShipmentModule } from './shipment/shipment.module';
       isGlobal: true,
     }),
     OrderModule,
-    OrderDetailModule,
     ReviewModule,
     ShipmentModule
   ],
@@ -40,7 +37,6 @@ import { ShipmentModule } from './shipment/shipment.module';
     AppController,
     UploadController,
     OrderController,
-    OrderDetailController,
     ReviewController,
     ShipmentController
   ],

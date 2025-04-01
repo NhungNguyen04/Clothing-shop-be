@@ -56,7 +56,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        idSeller: user.seller.id
       },
       access_token: this.jwtService.sign(payload),
       temp_code: tempCode, // This can be used by mobile clients
