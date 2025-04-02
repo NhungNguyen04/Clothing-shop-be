@@ -26,7 +26,7 @@ export class OrderService {
     return newOrder;
   }
 
-  async findBySeller(sellerId: string) : Promise<Order[]> {
+  async findBySeller(sellerId: string): Promise<Order[]> {
     const orders = await prisma.order.findMany(
       {
         where: {

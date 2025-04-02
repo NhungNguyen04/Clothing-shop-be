@@ -96,12 +96,13 @@ export const createOrderSchema = z.object({
 });
 
 
-
 export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5, { message: 'Rating must be between 1 and 5' }),
   comment: z.string().optional(),
+  images: z.array(z.string()).optional(),
   reviewDate: z.date().default(new Date()),
   productId: z.string().min(1, { message: 'ProductId is required' }),
+  userId: z.string().min(1, { message: 'UserId is required' }),
 });
 
 export const createShipmentSchema = z.object({
