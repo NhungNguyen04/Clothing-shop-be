@@ -1,6 +1,6 @@
 import { CreateReviewInput, createReviewSchema } from '@/schemas';
 import { ReviewService } from '@/src/review/review.service';
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
 import { Review } from '@prisma/client';
 
 @Controller('reviews')
@@ -51,6 +51,28 @@ export class ReviewController {
             return {
                 success: false,
                 message: error.message || 'Failed to fetch reviews',
+                error: error.response?.error || error.name,
+                data: null
+            }
+        }
+    }
+
+    @Get('/seller/:sellerId')
+    async findBySellerId(@Param('sellerId') sellerId: string, @Query('page') page: string = '0', @Query('limit') limit: string = '0') {
+        try {
+            const pageNumber = parseInt(page, 10);
+            const limitNumber = parseInt(limit, 10);
+            const result = await this.reviewService.findBySellerId(sellerId, pageNumber, limitNumber);
+            return {
+                success: true,
+                message: 'Reviews fetched successfully for seller',
+                error: null,
+                data: result
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch reviews for seller',
                 error: error.response?.error || error.name,
                 data: null
             }

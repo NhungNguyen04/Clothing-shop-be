@@ -34,4 +34,27 @@ export class ReviewService {
         })
         return reviews;
     }
+    async findBySellerId(sellerId: string, page: number = 1, limit: number = 10) {
+        const reviews = await prisma.review.findMany({
+            where: {
+                product: {
+                    sellerId: sellerId
+                }
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                    },
+                },
+                product: {
+                    select: {
+                        name: true,
+                    }
+                }
+            },
+            ...(limit > 0 ? { skip: (page - 1) * limit, take: limit } : {})
+        });
+        return reviews;
+    }
 }
