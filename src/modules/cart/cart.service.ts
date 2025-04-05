@@ -8,6 +8,28 @@ export class CartService {
 
   constructor() {}
 
+  // Helper method to update cart total value
+  private async updateCartTotalValue(cartId: string) {
+    const cartItems = await prisma.cartItem.findMany({
+      where: {
+        cartId,
+      },
+    });
+
+    const totalCartValue = cartItems.reduce((total, item) => total + item.totalPrice, 0);
+
+    await prisma.cart.update({
+      where: {
+        id: cartId,
+      },
+      data: {
+        totalCartValue,
+      },
+    });
+
+    return totalCartValue;
+  }
+
   async addToCart(userId: string, addToCartDto: AddToCartDto) {
     const { productId, size, quantity } = addToCartDto;
 
@@ -44,7 +66,10 @@ export class CartService {
 
     if (!cart) {
       cart = await prisma.cart.create({
-        data: { userId },
+        data: { 
+          userId,
+          totalCartValue: 0 // Initialize with zero
+        },
       });
       this.logger.log(`Created new cart for user: ${userId}`);
     }
@@ -60,47 +85,70 @@ export class CartService {
     // Calculate total price for this item
     const itemTotalPrice = product.price * quantity;
 
-    if (existingCartItem) {
-      // If item exists, update the quantity and total price
-      const updatedCartItem = await prisma.cartItem.update({
-        where: { id: existingCartItem.id },
-        data: {
-          quantity: existingCartItem.quantity + quantity,
-          totalPrice: existingCartItem.totalPrice + itemTotalPrice,
-        },
-        include: {
-          sizeStock: {
-            include: {
-              product: true
+    let cartItem;
+    
+    // Use a transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      if (existingCartItem) {
+        // If item exists, update the quantity and total price
+        cartItem = await tx.cartItem.update({
+          where: { id: existingCartItem.id },
+          data: {
+            quantity: existingCartItem.quantity + quantity,
+            totalPrice: existingCartItem.totalPrice + itemTotalPrice,
+          },
+          include: {
+            sizeStock: {
+              include: {
+                product: true
+              }
             }
           }
-        }
-      });
-      
-      this.logger.log(`Updated quantity for existing cart item: ${updatedCartItem.id}`);
-      return updatedCartItem;
-    } else {
-      // If item doesn't exist, create a new cart item
-      const newCartItem = await prisma.cartItem.create({
-        data: {
-          userId,
+        });
+        
+        this.logger.log(`Updated quantity for existing cart item: ${cartItem.id}`);
+      } else {
+        // If item doesn't exist, create a new cart item
+        cartItem = await tx.cartItem.create({
+          data: {
+            userId,
+            cartId: cart.id,
+            sizeStockId: sizeStock.id,
+            quantity,
+            totalPrice: itemTotalPrice,
+          },
+          include: {
+            sizeStock: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+        
+        this.logger.log(`Added new item to cart: ${cartItem.id}`);
+      }
+
+      // Update the cart's total value
+      const cartItems = await tx.cartItem.findMany({
+        where: {
           cartId: cart.id,
-          sizeStockId: sizeStock.id,
-          quantity,
-          totalPrice: itemTotalPrice,
         },
-        include: {
-          sizeStock: {
-            include: {
-              product: true
-            }
-          }
-        }
       });
-      
-      this.logger.log(`Added new item to cart: ${newCartItem.id}`);
-      return newCartItem;
-    }
+
+      const newTotalCartValue = cartItems.reduce((total, item) => total + item.totalPrice, 0);
+
+      await tx.cart.update({
+        where: {
+          id: cart.id,
+        },
+        data: {
+          totalCartValue: newTotalCartValue,
+        },
+      });
+    });
+
+    return cartItem;
   }
 
   async getUserCart(userId: string) {
@@ -124,18 +172,35 @@ export class CartService {
     });
 
     if (!cart) {
-      return { id: userId, cartItems: [] };
+      return { id: userId, cartItems: [], itemsBySeller: [], totalCartValue: 0 };
     }
 
-    // Calculate total cart value
-    const totalCartValue = cart.cartItems.reduce(
-      (total, item) => total + item.totalPrice,
-      0
-    );
+    // Group items by seller
+    const sellerMap = new Map();
+    
+    cart.cartItems.forEach(item => {
+      const sellerId = item.sizeStock.product.sellerId;
+      const sellerName = item.sizeStock.product.seller.managerName || 'Unknown Seller';
+      
+      if (!sellerMap.has(sellerId)) {
+        sellerMap.set(sellerId, {
+          sellerId,
+          sellerName,
+          items: [],
+          totalValue: 0
+        });
+      }
+      
+      const sellerGroup = sellerMap.get(sellerId);
+      sellerGroup.items.push(item);
+      sellerGroup.totalValue += item.totalPrice;
+    });
+    
+    const itemsBySeller = Array.from(sellerMap.values());
 
     return {
       ...cart,
-      totalCartValue
+      itemsBySeller
     };
   }
 
@@ -155,11 +220,32 @@ export class CartService {
       throw new NotFoundException(`Cart item with ID ${cartItemId} not found or doesn't belong to the user`);
     }
 
-    // Delete the cart item
-    await prisma.cartItem.delete({
-      where: {
-        id: cartItemId,
-      },
+    // Use transaction to delete item and update cart total
+    await prisma.$transaction(async (tx) => {
+      // Delete the cart item
+      await tx.cartItem.delete({
+        where: {
+          id: cartItemId,
+        },
+      });
+
+      // Update the cart's total value
+      const cartItems = await tx.cartItem.findMany({
+        where: {
+          cartId: cartItem.cartId,
+        },
+      });
+
+      const newTotalCartValue = cartItems.reduce((total, item) => total + item.totalPrice, 0);
+
+      await tx.cart.update({
+        where: {
+          id: cartItem.cartId,
+        },
+        data: {
+          totalCartValue: newTotalCartValue,
+        },
+      });
     });
 
     this.logger.log(`Deleted cart item: ${cartItemId}`);
@@ -200,68 +286,44 @@ export class CartService {
     // Calculate new total price
     const unitPrice = cartItem.sizeStock.product.price;
     const newTotalPrice = unitPrice * quantity;
+    const priceDifference = newTotalPrice - cartItem.totalPrice;
 
-    // Update the cart item
-    const updatedCartItem = await prisma.cartItem.update({
-      where: {
-        id: cartItemId,
-      },
-      data: {
-        quantity,
-        totalPrice: newTotalPrice,
-      },
-      include: {
-        sizeStock: {
-          include: {
-            product: true,
+    // Use transaction to update cart item and cart total
+    let updatedCartItem;
+    await prisma.$transaction(async (tx) => {
+      // Update the cart item
+      updatedCartItem = await tx.cartItem.update({
+        where: {
+          id: cartItemId,
+        },
+        data: {
+          quantity,
+          totalPrice: newTotalPrice,
+        },
+        include: {
+          sizeStock: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
+      });
+
+      // Update the cart's total value
+      await tx.cart.update({
+        where: {
+          id: cartItem.cartId,
+        },
+        data: {
+          totalCartValue: {
+            increment: priceDifference
+          },
+        },
+      });
     });
 
     this.logger.log(`Updated quantity for cart item: ${cartItemId} to ${quantity}`);
     return updatedCartItem;
-  }
-
-  async getCartItemsBySeller(userId: string, sellerId: string) {
-    // First check if the user has a cart
-    const cart = await prisma.cart.findFirst({
-      where: { userId },
-      include: {
-        cartItems: {
-          where: {
-            sizeStock: {
-              product: {
-                sellerId,
-              },
-            },
-          },
-          include: {
-            sizeStock: {
-              include: {
-                product: {
-                  include: {
-                    seller: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!cart || cart.cartItems.length === 0) {
-      return { items: [], totalValue: 0 };
-    }
-
-    // Calculate total value for this seller's items
-    const totalValue = cart.cartItems.reduce((total, item) => total + item.totalPrice, 0);
-
-    return {
-      items: cart.cartItems,
-      totalValue,
-    };
   }
 
   async deleteCartItemsBySeller(userId: string, sellerId: string) {
@@ -274,9 +336,9 @@ export class CartService {
       throw new NotFoundException(`Cart not found for user: ${userId}`);
     }
 
-    // Delete cart items from this seller in a transaction
+    // Use transaction to delete cart items and update cart total
     const result = await prisma.$transaction(async (tx) => {
-      // First identify the cart items to delete
+      // First identify the cart items to delete and their total value
       const itemsToDelete = await tx.cartItem.findMany({
         where: {
           cartId: cart.id,
@@ -289,8 +351,10 @@ export class CartService {
       });
 
       if (itemsToDelete.length === 0) {
-        return { count: 0 };
+        return { count: 0, totalPriceReduction: 0 };
       }
+
+      const totalPriceReduction = itemsToDelete.reduce((total, item) => total + item.totalPrice, 0);
 
       // Delete the items
       const deleteResult = await tx.cartItem.deleteMany({
@@ -301,13 +365,29 @@ export class CartService {
         },
       });
 
-      return deleteResult;
+      // Update the cart's total value
+      await tx.cart.update({
+        where: {
+          id: cart.id,
+        },
+        data: {
+          totalCartValue: {
+            decrement: totalPriceReduction
+          },
+        },
+      });
+
+      return { 
+        count: deleteResult.count, 
+        totalPriceReduction 
+      };
     });
 
     this.logger.log(`Deleted ${result.count} cart items from seller: ${sellerId}`);
     return {
       success: true,
       deletedCount: result.count,
+      totalPriceReduction: result.totalPriceReduction,
       message: `${result.count} items removed from cart`,
     };
   }

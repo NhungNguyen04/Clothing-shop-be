@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 
@@ -6,6 +6,13 @@ import { AddToCartDto } from './dto/add-to-cart.dto';
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
+  // Get user's cart - /cart/:userId
+  @Get(':userId')
+  async getUserCart(@Param('userId') userId: string) {
+    return this.cartService.getUserCart(userId);
+  }
+
+  // Add item to cart - /cart/:userId
   @Post(':userId')
   async addToCart(
     @Param('userId') userId: string,
@@ -14,40 +21,30 @@ export class CartController {
     return this.cartService.addToCart(userId, addToCartDto);
   }
 
-  @Get(':userId')
-  async getUserCart(@Param('userId') userId: string) {
-    return this.cartService.getUserCart(userId);
-  }
-
-  @Delete(':userId/item/:cartItemId')
-  async deleteCartItem(
-    @Param('userId') userId: string,
-    @Param('cartItemId') cartItemId: string
-  ) {
-    return this.cartService.deleteCartItem(cartItemId, userId);
-  }
-
-  @Patch(':userId/item/:cartItemId')
+  // Update cart item quantity - /cart/item/:cartItemId
+  @Patch('item/:cartItemId')
   async updateCartItemQuantity(
-    @Param('userId') userId: string,
     @Param('cartItemId') cartItemId: string,
+    @Query('userId') userId: string,
     @Body() body: { quantity: number }
   ) {
     return this.cartService.updateCartItemQuantity(cartItemId, userId, body.quantity);
   }
 
-  @Get(':userId/seller/:sellerId')
-  async getCartItemsBySeller(
-    @Param('userId') userId: string,
-    @Param('sellerId') sellerId: string
+  // Delete a cart item - /cart/item/:cartItemId
+  @Delete('item/:cartItemId')
+  async deleteCartItem(
+    @Param('cartItemId') cartItemId: string,
+    @Query('userId') userId: string
   ) {
-    return this.cartService.getCartItemsBySeller(userId, sellerId);
+    return this.cartService.deleteCartItem(cartItemId, userId);
   }
 
-  @Delete(':userId/seller/:sellerId')
+  // Delete all items from a seller - /cart/:userId/seller
+  @Delete('seller/:sellerId')
   async deleteCartItemsBySeller(
-    @Param('userId') userId: string,
-    @Param('sellerId') sellerId: string
+    @Param('sellerId') sellerId: string,
+    @Query('userId') userId: string
   ) {
     return this.cartService.deleteCartItemsBySeller(userId, sellerId);
   }

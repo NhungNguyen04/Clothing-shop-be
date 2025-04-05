@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Cart" ADD COLUMN     "totalCartValue" DOUBLE PRECISION NOT NULL DEFAULT 0;
