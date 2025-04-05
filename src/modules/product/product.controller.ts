@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { CreateProductInput, createProductSchema, UpdateProductInput } from "@/schemas";
 import { ProductService } from "./product.service";
 
@@ -38,9 +38,11 @@ export class ProductController {
   }
 
   @Get()
-  async findAll() {
+  async findAll(@Query('page') page: string = '0', @Query('limit') limit: string = '0') {
     try {
-      const result = await this.productService.findAll();
+      const pageNumber = parseInt(page, 10);
+      const limitNumber = parseInt(limit, 10);
+      const result = await this.productService.findAll(pageNumber, limitNumber);
       return {
         success: true,
         message: 'Products fetched successfully',

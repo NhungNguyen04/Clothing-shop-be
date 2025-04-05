@@ -62,13 +62,25 @@ export class ProductService {
     };
   }
 
-  async findAll() {
-    return prisma.product.findMany({
-      include: {
-        seller: true,
-        stockSize: true
-      }
-    });
+  async findAll(page?: number, limit?: number) {
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      return prisma.product.findMany({
+        skip,
+        take: limit,
+        include: {
+          seller: true,
+          stockSize: true
+        }
+      });
+    } else {
+      return prisma.product.findMany({
+        include: {
+          seller: true,
+          stockSize: true
+        }
+      });
+    }
   }
 
   async findOne(id: string) {
