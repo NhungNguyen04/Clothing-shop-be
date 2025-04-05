@@ -58,6 +58,8 @@ model User {
   seller    Seller?
   Order     Order[]
   Review    Review[]
+  Cart      Cart[]
+  cartItems CartItem[]
 }
 
 model Seller {
@@ -91,9 +93,8 @@ model Product {
   ratings       Int?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-
-  Review Review[]
-  Order  Order[]
+  Review          Review[]
+  Order           Order[]
 }
 
 model SizeStock {
@@ -102,6 +103,7 @@ model SizeStock {
   quantity  Int
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cartItems CartItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -159,4 +161,27 @@ model Shipment {
   order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sizeStockId String
+  sizeStock  SizeStock @relation(fields: [sizeStockId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  quantity  Int
+  totalPrice Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cartItems CartItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
