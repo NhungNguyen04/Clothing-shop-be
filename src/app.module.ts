@@ -18,6 +18,8 @@ import { ShipmentController } from './shipment/shipment.controller';
 import { OrderModule } from './order/order.module';
 import { ReviewModule } from './review/review.module';
 import { ShipmentModule } from './shipment/shipment.module';
+import { CartModule } from './modules/cart/cart.module';
+
 
 @Module({
   imports: [
@@ -31,7 +33,8 @@ import { ShipmentModule } from './shipment/shipment.module';
     }),
     OrderModule,
     ReviewModule,
-    ShipmentModule
+    ShipmentModule,
+    CartModule
   ],
   controllers: [
     AppController,
