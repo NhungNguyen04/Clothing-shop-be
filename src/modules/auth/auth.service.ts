@@ -46,11 +46,11 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id }
-
+    const payload: { name?: any, email: any; sub: any; picture?: string } = { email: user.email, sub: user.id }
+    if (user.picture) payload.picture = user.picture
+    if (user.name) payload.name = user.name
     // Generate a temporary code for mobile clients
     const tempCode = this.generateTempCode(user)
-
     return {
       user: {
         id: user.id,
@@ -58,7 +58,7 @@ export class AuthService {
         image: user.image,
         name: user.name,
         role: user.role,
-        idSeller: user.seller.id
+        idSeller: user.seller ? user.seller.id : null
       },
       access_token: this.jwtService.sign(payload),
       temp_code: tempCode, // This can be used by mobile clients

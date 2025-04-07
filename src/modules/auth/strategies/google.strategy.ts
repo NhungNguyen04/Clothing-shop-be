@@ -21,7 +21,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     this.logger.log(`Google auth strategy validating user ${profile.emails[0].value}`);
     
     const { name, emails, photos } = profile;
-    
     const user = {
       email: emails[0].value,
       name: `${name.givenName} ${name.familyName}`,
@@ -29,13 +28,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       accessToken
     };
     
-    const userFromDb = await this.authService.validateOAuthUser(user);
+    const userFromDb : any = await this.authService.validateOAuthUser(user);
     this.logger.log(`User from DB: ${JSON.stringify(userFromDb)}`);
     
     if (!userFromDb) {
       return null;
     }
-    
+    userFromDb.picture = photos[0].value;
     return userFromDb;
   }
 }

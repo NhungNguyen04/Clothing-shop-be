@@ -121,7 +121,7 @@ export class AuthController {
           const userData = encodeURIComponent(JSON.stringify({
             id: user.id,
             email: user.email,
-            name: user.name
+            name: user.name,
           }));
           mobileRedirectUrl += `&user=${userData}`;
         }
