@@ -8,28 +8,6 @@ export class CartService {
 
   constructor() {}
 
-  // Helper method to update cart total value
-  private async updateCartTotalValue(cartId: string) {
-    const cartItems = await prisma.cartItem.findMany({
-      where: {
-        cartId,
-      },
-    });
-
-    const totalCartValue = cartItems.reduce((total, item) => total + item.totalPrice, 0);
-
-    await prisma.cart.update({
-      where: {
-        id: cartId,
-      },
-      data: {
-        totalCartValue,
-      },
-    });
-
-    return totalCartValue;
-  }
-
   async addToCart(userId: string, addToCartDto: AddToCartDto) {
     const { productId, size, quantity } = addToCartDto;
 
