@@ -2,9 +2,12 @@ import { CreateOrderInput, UpdateOrderInput } from '@/schemas'; // UpdateOrderIn
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@/prisma/prisma';
 import { Order } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class OrderService {
+  constructor(private notificationService: NotificationService) {}
+
   // Create a new order
   async create(createOrderDto: CreateOrderInput): Promise<Order> {
     const newOrder: Order = await prisma.order.create({
@@ -44,6 +47,23 @@ export class OrderService {
     return orders
   }
 
+  async findByUser(userId: string): Promise<Order[]> {
+    const orders = await prisma.order.findMany({
+      where: {
+        userId: userId
+      },
+      include: {
+        product: true,
+      }
+    });
+    
+    if (!orders || orders.length === 0) {
+      throw new NotFoundException(`No orders found for user with ID ${userId}`);
+    }
+    
+    return orders;
+  }
+
   async findOne(orderId: string): Promise<Order> {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -58,6 +78,16 @@ export class OrderService {
     orderId: string,
     updateOrderDto: UpdateOrderInput,
   ): Promise<Order> {
+    // First, find the order to get the user ID
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    // Update the order
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
@@ -65,8 +95,13 @@ export class OrderService {
       },
     });
 
-    if (!updatedOrder) {
-      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    // Send notification to the user about the order status update
+    if (updateOrderDto.status && updateOrderDto.status !== order.status) {
+      await this.notificationService.createOrderStatusNotification(
+        order.userId,
+        orderId,
+        updateOrderDto.status
+      );
     }
 
     return updatedOrder;

@@ -2,11 +2,28 @@ import { CreateReviewInput, createReviewSchema } from '@/schemas';
 import { ReviewService } from '@/src/review/review.service';
 import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
 import { Review } from '@prisma/client';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 
+@ApiTags('Reviews')
 @Controller('reviews')
 export class ReviewController {
     constructor(private readonly reviewService: ReviewService) {}
 
+    @ApiOperation({ summary: 'Create a new review' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                userId: { type: 'string', example: 'user-uuid' },
+                productId: { type: 'string', example: 'product-uuid' },
+                rating: { type: 'number', example: 4.5 },
+                comment: { type: 'string', example: 'Great product, very satisfied!' }
+            },
+            required: ['userId', 'productId', 'rating']
+        }
+    })
+    @ApiResponse({ status: 201, description: 'Review created successfully' })
+    @ApiResponse({ status: 400, description: 'Validation failed' })
     @Post()
     async create(@Body() createReviewDto: CreateReviewInput){
         try {
@@ -37,6 +54,9 @@ export class ReviewController {
         }
     }
 
+    @ApiOperation({ summary: 'Get reviews by product ID' })
+    @ApiParam({ name: 'productId', description: 'Product ID' })
+    @ApiResponse({ status: 200, description: 'Returns product reviews' })
     @Get('/:productId')
     async findAll(@Param('productId') productId: string){
         try {
@@ -57,6 +77,11 @@ export class ReviewController {
         }
     }
 
+    @ApiOperation({ summary: 'Get reviews by seller ID' })
+    @ApiParam({ name: 'sellerId', description: 'Seller ID' })
+    @ApiQuery({ name: 'page', required: false, description: 'Page number' })
+    @ApiQuery({ name: 'limit', required: false, description: 'Items per page' })
+    @ApiResponse({ status: 200, description: 'Returns seller reviews' })
     @Get('/seller/:sellerId')
     async findBySellerId(@Param('sellerId') sellerId: string, @Query('page') page: string = '0', @Query('limit') limit: string = '0') {
         try {

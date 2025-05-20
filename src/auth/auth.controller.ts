@@ -5,6 +5,7 @@ import { LocalAuthGuard } from "./guards/local-auth.guard"
 import { JwtAuthGuard } from "./guards/jwt-auth.guard"
 import { GoogleAuthGuard } from "./guards/google-auth.guard"
 import { Response, Request as ExpressRequest } from "express"
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger'
 
 // Add this at module level to store data between requests
 const AUTH_FLOWS = new Map<string, { platform: string, redirectUri: string, timestamp: number }>();
@@ -19,18 +20,35 @@ setInterval(() => {
   }
 }, 3600000);
 
+@ApiTags('Authentication')
 @Controller("auth")
 export class AuthController {
 
   constructor(private authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+        password: { type: 'string', example: 'password123' }
+      },
+      required: ['email', 'password']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Successfully logged in' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Request() req) {
     return this.authService.login(req.user);
   }
 
-  // Completely replace the GoogleAuthGuard approach for the initial request
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  @ApiQuery({ name: 'platform', required: false, description: 'Client platform (web/mobile)' })
+  @ApiQuery({ name: 'redirect_uri', required: false, description: 'URI to redirect after authentication' })
+  @ApiResponse({ status: 302, description: 'Redirects to Google authentication' })
   @Get("google")
   async googleAuth(@Query() query, @Res() res: Response) {
     try {
@@ -67,7 +85,9 @@ export class AuthController {
     }
   }
 
-  // Keep the guard only for authentication, but handle redirects manually
+  @ApiOperation({ summary: 'Handle Google OAuth callback' })
+  @ApiQuery({ name: 'state', required: true, description: 'State parameter from Google OAuth' })
+  @ApiResponse({ status: 302, description: 'Redirects based on authentication result' })
   @UseGuards(GoogleAuthGuard)
   @Get("google/callback")
   async googleAuthCallback(@Req() req, @Query() query, @Res() res: Response) {
@@ -140,6 +160,9 @@ export class AuthController {
     }
   }
 
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Returns user profile' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getProfile(@Request() req) {
@@ -147,6 +170,18 @@ export class AuthController {
     return user;
   }
 
+  @ApiOperation({ summary: 'Exchange authorization code for token' })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', example: 'auth_code_from_provider' }
+      },
+      required: ['code']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Returns token data' })
+  @ApiResponse({ status: 400, description: 'Invalid code' })
   @Post('token-exchange')
   async exchangeToken(@Body() body: { code: string }) {
     try {

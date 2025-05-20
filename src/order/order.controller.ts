@@ -1,12 +1,39 @@
 import { CreateOrderInput, createOrderSchema, UpdateOrderInput, updateOrderSchema } from '@/schemas';
 import { Body, Controller, Get, Param, Post, Delete, Patch } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 
+@ApiTags('Orders')
 @Controller('orders')
 export class OrderController {
     
     constructor(private readonly orderService: OrderService) {}
 
+    @ApiOperation({ summary: 'Create a new order' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                userId: { type: 'string', example: 'user-uuid' },
+                items: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            productId: { type: 'string', example: 'product-uuid' },
+                            quantity: { type: 'number', example: 2 },
+                            price: { type: 'number', example: 29.99 }
+                        }
+                    }
+                },
+                shippingAddress: { type: 'string', example: '123 Main St, City' },
+                // Add other required properties
+            },
+            required: ['userId', 'items']
+        }
+    })
+    @ApiResponse({ status: 201, description: 'Order created successfully' })
+    @ApiResponse({ status: 400, description: 'Validation failed' })
     @Post()
     async create(@Body() createOrderDto: CreateOrderInput) {
         try {
@@ -38,6 +65,10 @@ export class OrderController {
         }
     }
 
+    @ApiOperation({ summary: 'Get orders by seller ID' })
+    @ApiParam({ name: 'sellerId', description: 'Seller ID' })
+    @ApiResponse({ status: 200, description: 'Returns seller orders' })
+    @ApiResponse({ status: 404, description: 'No orders found' })
     @Get('/seller/:sellerId')
     async findBySeller(@Param('sellerId') sellerId: string) {
         try {
@@ -66,6 +97,10 @@ export class OrderController {
         }
     }
 
+    @ApiOperation({ summary: 'Get order by ID' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiResponse({ status: 200, description: 'Returns order details' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
     @Get(':orderId')
     async findOne(@Param('orderId') orderId: string) {
         try {
@@ -94,6 +129,20 @@ export class OrderController {
         }
     }
 
+    @ApiOperation({ summary: 'Update order' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                status: { type: 'string', example: 'PROCESSING' },
+                shippingAddress: { type: 'string', example: 'Updated address' },
+                // Add other updatable properties
+            }
+        }
+    })
+    @ApiResponse({ status: 200, description: 'Order updated successfully' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
     @Patch(':orderId')
     async update(@Param('orderId') orderId: string, @Body() updateOrderDto: UpdateOrderInput) {
         try {
@@ -134,6 +183,10 @@ export class OrderController {
         }
     }
 
+    @ApiOperation({ summary: 'Delete order' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiResponse({ status: 200, description: 'Order deleted successfully' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
     @Delete(':orderId')
     async delete(@Param('orderId') orderId: string) {
         try {
@@ -157,6 +210,29 @@ export class OrderController {
             return {
                 success: false,
                 message: error.message || 'Failed to delete order',
+                error: error.name,
+                data: null
+            };
+        }
+    }
+
+    @ApiOperation({ summary: 'Get user orders' })
+    @ApiParam({ name: 'userId', description: 'User ID' })
+    @ApiResponse({ status: 200, description: 'Returns user orders' })
+    @Get('/user/:userId')
+    async get(@Param('userId') userId: string) {
+        try {
+            const orders = await this.orderService.findByUser(userId);
+            return {
+                success: true,
+                message: 'Orders fetched successfully',
+                error: null,
+                data: orders
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch user orders',
                 error: error.name,
                 data: null
             };

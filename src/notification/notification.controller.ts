@@ -1,0 +1,94 @@
+import { Controller, Get, Post, Body, Param, Delete, Put, UseGuards, Req } from '@nestjs/common';
+import { NotificationService } from './notification.service';
+import { Notification } from '@prisma/client';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+
+@ApiTags('notifications')
+@ApiBearerAuth()
+@Controller('notifications')
+export class NotificationController {
+  constructor(private readonly notificationService: NotificationService) {}
+
+  @ApiOperation({ summary: 'Get all user notifications', description: 'Retrieves all notifications for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Returns an array of notifications' })
+  @Get()
+  async getUserNotifications(@Req() req): Promise<Notification[]> {
+    const userId = req.user.id;
+    return this.notificationService.getNotificationsByUserId(userId);
+  }
+
+  @ApiOperation({ summary: 'Get unread notifications', description: 'Retrieves all unread notifications for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Returns an array of unread notifications' })
+  @Get('unread')
+  async getUnreadNotifications(@Req() req): Promise<Notification[]> {
+    const userId = req.user.id;
+    return this.notificationService.getUnreadNotifications(userId);
+  }
+
+  @ApiOperation({ summary: 'Get notification count', description: 'Retrieves the total count of notifications for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Returns the count of notifications', type: Object })
+  @Get('count')
+  async getNotificationCount(@Req() req): Promise<{ count: number }> {
+    const userId = req.user.id;
+    const count = await this.notificationService.getNotificationCount(userId);
+    return { count };
+  }
+
+  @ApiOperation({ summary: 'Create notification', description: 'Creates a new notification for a user' })
+  @ApiBody({ 
+    type: Object, 
+    description: 'Notification data',
+    schema: {
+      properties: {
+        userId: { type: 'string', description: 'ID of the user to notify' },
+        message: { type: 'string', description: 'Notification message' }
+      }
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Notification created successfully' })
+  @Post()
+  async createNotification(
+    @Body() data: { userId: string; message: string },
+  ): Promise<Notification> {
+    return this.notificationService.createNotification(data);
+  }
+
+  @ApiOperation({ summary: 'Mark notification as read', description: 'Marks a specific notification as read' })
+  @ApiParam({ name: 'id', description: 'Notification ID' })
+  @ApiResponse({ status: 200, description: 'Notification marked as read' })
+  @Put(':id/read')
+  async markAsRead(@Param('id') id: string): Promise<Notification> {
+    return this.notificationService.markAsRead(id);
+  }
+
+  @ApiOperation({ summary: 'Mark all notifications as read', description: 'Marks all notifications of the authenticated user as read' })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read', type: Object })
+  @Put('read-all')
+  async markAllAsRead(@Req() req): Promise<{ success: boolean; count: number }> {
+    const userId = req.user.id;
+    const result = await this.notificationService.markAllAsRead(userId);
+    return { 
+      success: true, 
+      count: result.count 
+    };
+  }
+
+  @ApiOperation({ summary: 'Delete notification', description: 'Deletes a specific notification' })
+  @ApiParam({ name: 'id', description: 'Notification ID' })
+  @ApiResponse({ status: 200, description: 'Notification deleted successfully' })
+  @Delete(':id')
+  async deleteNotification(@Param('id') id: string): Promise<Notification> {
+    return this.notificationService.deleteNotification(id);
+  }
+
+  @ApiOperation({ summary: 'Delete all notifications', description: 'Deletes all notifications of the authenticated user' })
+  @ApiResponse({ status: 200, description: 'All notifications deleted successfully', type: Object })
+  @Delete('/user/:userId')
+  async deleteAllNotifications(@Param('userId') userId: string): Promise<{ success: boolean; count: number }> {
+    const result = await this.notificationService.deleteAllNotifications(userId);
+    return { 
+      success: true, 
+      count: result.count 
+    };
+  }
+}

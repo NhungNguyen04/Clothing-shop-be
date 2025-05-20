@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import * as session from 'express-session';
 import * as passport from 'passport';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   // Force console to show all logs
@@ -50,6 +51,14 @@ async function bootstrap() {
   console.log = (message: string) => {
     console.info(`LOG: ${message}`);
   };
+
+  const config = new DocumentBuilder()
+    .setTitle('Clothing shop')
+    .setDescription('The clothing shop API description')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   await app.listen(process.env.PORT ?? 3300);
   console.log(`Application is running on: ${await app.getUrl()}`);

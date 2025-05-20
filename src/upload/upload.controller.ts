@@ -1,12 +1,29 @@
 import { Controller, FileTypeValidator, Logger, ParseFilePipe, Post, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 
+@ApiTags('Upload')
 @Controller('upload')
 export class UploadController {
 
   constructor(private readonly uploadService: UploadService) {}
 
+  @ApiOperation({ summary: 'Upload a single file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'File uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid file format' })
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile(
@@ -25,6 +42,24 @@ export class UploadController {
     };
   }
 
+  @ApiOperation({ summary: 'Upload multiple files' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Files uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid file format' })
   @Post('multiple')
   @UseInterceptors(FilesInterceptor('files'))
   async uploadMultipleFiles(@UploadedFiles(

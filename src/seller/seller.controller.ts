@@ -1,11 +1,28 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, HttpStatus, HttpException } from '@nestjs/common';
 import { SellerService } from './seller.service';
 import { CreateSellerInput, createSellerSchema, UpdateSellerInput, updateSellerSchema } from '@/schemas';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 
+@ApiTags('Sellers')
 @Controller('sellers')
 export class SellerController {
   constructor(private readonly sellerService: SellerService) {}
 
+  @ApiOperation({ summary: 'Create a new seller' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string', example: 'user-uuid' },
+        name: { type: 'string', example: 'Store Name' },
+        description: { type: 'string', example: 'Store description' },
+        // Add other properties based on your seller schema
+      },
+      required: ['userId', 'name']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Seller created successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
   @Post()
   async create(@Body() createSellerDto: CreateSellerInput) {
     try {
@@ -31,6 +48,8 @@ export class SellerController {
     }
   }
 
+  @ApiOperation({ summary: 'Get all sellers' })
+  @ApiResponse({ status: 200, description: 'Returns all sellers' })
   @Get()
   async findAll() {
     try {
@@ -45,6 +64,10 @@ export class SellerController {
     }
   }
 
+  @ApiOperation({ summary: 'Get seller by ID' })
+  @ApiParam({ name: 'id', description: 'Seller ID' })
+  @ApiResponse({ status: 200, description: 'Returns seller details' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -59,6 +82,10 @@ export class SellerController {
     }
   }
 
+  @ApiOperation({ summary: 'Get seller by user ID' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Returns seller details' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
   @Get('user/:userId')
   async findByUserId(@Param('userId') userId: string) {
     try {
@@ -73,6 +100,20 @@ export class SellerController {
     }
   }
 
+  @ApiOperation({ summary: 'Update seller' })
+  @ApiParam({ name: 'id', description: 'Seller ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Updated Store Name' },
+        description: { type: 'string', example: 'Updated store description' },
+        // Add other updatable properties
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Seller updated successfully' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateSellerDto: UpdateSellerInput) {
     try {
@@ -98,6 +139,10 @@ export class SellerController {
     }
   }
 
+  @ApiOperation({ summary: 'Delete seller' })
+  @ApiParam({ name: 'id', description: 'Seller ID' })
+  @ApiResponse({ status: 200, description: 'Seller deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
   @Delete(':id')
   async remove(@Param('id') id: string) {
     try {

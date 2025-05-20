@@ -60,6 +60,9 @@ model User {
   Review    Review[]
   Cart      Cart[]
   cartItems CartItem[]
+  conversations Conversation[]
+  sentMessages Message[] @relation("UserSentMessages")
+  notifications Notification[]
 }
 
 model Seller {
@@ -76,6 +79,7 @@ model Seller {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   Order       Order[]
+  conversations Conversation[]
 }
 
 model Product {
@@ -183,6 +187,37 @@ model Cart {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   cartItems CartItem[]
   totalCartValue Float @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sellerId  String
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  messages  Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderId       String
+  sender         User     @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
