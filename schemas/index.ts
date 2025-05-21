@@ -13,7 +13,15 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export const createOAuthSchema = createUserSchema.omit({ password: true });
 export type CreateOAuthInput = z.infer<typeof createOAuthSchema>;
 
-export const updateUserSchema = createUserSchema.partial();
+export const updateUserSchema = z.object ({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }).optional(),
+  email: z.string().email({ message: 'Invalid email format' }).optional(),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters' }).optional(),
+  phoneNumber: z.string().optional(),
+  image: z.string().optional(),
+  address: z.string().optional(),
+  postalCode: z.string().optional()
+})
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
@@ -81,20 +89,47 @@ export const createProductSchema = z.object({
   ),
 });
 
-export const createOrderSchema = z.object({
-  totalPrice: z.number().positive({ message: 'Total price must be positive' }),
-  status: z.string().min(1, { message: 'Status is required' }),
-  customerName: z.string().min(1, { message: 'Customer name is required' }),
-  phoneNumber: z.string().min(1, { message: 'Phone number is required' }),
-  userId: z.string().min(1, { message: 'UserId is required' }),
-  address: z.string().min(5, { message: 'Address must be at least 5 characters' }),
-  productId: z.string().min(1, { message: 'ProductId is required' }),
-  quantity: z.number().int().positive({ message: 'Quantity must be positive' }),
-  price: z.number().positive({ message: 'Price must be positive' }),
-  sellerId: z.string().min(1, { message: 'SellerId is required' }),
-  size: z.string().min(1, { message: 'Size is required' }),
+
+// Schema for order item
+const orderItemSchema = z.object({
+  sizeStockId: z.string(),
+  quantity: z.number().positive(),
+  price: z.number().positive()
 });
 
+// Schema for creating an order
+export const createOrderSchema = z.object({
+  userId: z.string(),
+  sellerId: z.string(),
+  phoneNumber: z.string(),
+  address: z.string(),
+  postalCode: z.string().optional(),
+  paymentMethod: z.enum(['COD', 'VIETQR']).default('COD'),
+  orderItems: z.array(orderItemSchema)
+});
+
+export const cartToOrderSchema = z.object({
+  cartId: z.string(),
+  userId: z.string(),
+  phoneNumber: z.string(),
+  address: z.string(),
+  postalCode: z.string().optional(),
+  paymentMethod: z.enum(['COD', 'VIETQR']).default('COD'),
+  selectedCartItemIds: z.array(z.string())
+});
+
+// Schema for updating an order
+export const updateOrderSchema = z.object({
+  status: z.enum(['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  paymentStatus: z.enum(['PENDING', 'SUCCESS']).optional(),
+  shipmentStatus: z.string().optional(),
+  deliveryDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  cancelReason: z.string().optional()
+});
+
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type CartToOrderInput = z.infer<typeof cartToOrderSchema>;
+export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
 
 export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5, { message: 'Rating must be between 1 and 5' }),
@@ -112,20 +147,11 @@ export const createShipmentSchema = z.object({
 });
 
 
-
-
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductSchema.partial();
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
-
-
-export type CreateOrderInput = z.infer<typeof createOrderSchema>;
-
-export const updateOrderSchema = createOrderSchema.partial();
-
-export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
 
 
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;

@@ -8,20 +8,34 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from 
 export class ProductController {
 
   constructor(private readonly productService: ProductService) {}
-  
+
   @ApiOperation({ summary: 'Create a new product' })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string', example: 'T-Shirt' },
-        description: { type: 'string', example: 'Comfortable cotton t-shirt' },
-        price: { type: 'number', example: 29.99 },
-        sellerId: { type: 'string', example: 'seller-uuid' },
-        categoryId: { type: 'string', example: 'category-uuid' },
-        // Add other properties as needed
+        name: { type: 'string', minLength: 2, example: 'T-Shirt', description: 'Product name (min 2 characters)' },
+        description: { type: 'string', minLength: 10, example: 'Comfortable cotton t-shirt', description: 'Product description (min 10 characters)' },
+        price: { type: 'number', minimum: 0.01, example: 29.99, description: 'Product price (must be positive)' },
+        image: { type: 'array', items: { type: 'string' }, example: ['image1.jpg', 'image2.jpg'], description: 'Product images' },
+        category: { type: 'string', enum: ['men', 'women', 'kids'], example: 'men', description: 'Product category' },
+        subCategory: { type: 'string', enum: ['topwear', 'bottomwear', 'winterwear'], example: 'topwear', description: 'Product subcategory' },
+        sellerId: { type: 'string', minLength: 1, example: 'seller-uuid', description: 'ID of the seller (required)' },
+        stockSize: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              size: { type: 'string', enum: ['S', 'M', 'L', 'XL', 'XXL'], example: 'M', description: 'Size' },
+              quantity: { type: 'number', minimum: 0, example: 10, description: 'Quantity (nonnegative integer)' }
+            },
+            required: ['size', 'quantity']
+          },
+          example: [{ size: 'M', quantity: 10 }, { size: 'L', quantity: 5 }],
+          description: 'Stock by size'
+        }
       },
-      required: ['name', 'price', 'sellerId']
+      required: ['name', 'description', 'price', 'image', 'category', 'subCategory', 'sellerId', 'stockSize']
     }
   })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
@@ -136,10 +150,15 @@ export class ProductController {
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string', example: 'Updated T-Shirt' },
-        description: { type: 'string', example: 'Updated description' },
-        price: { type: 'number', example: 39.99 },
-        // Add other properties as needed
+        name: { type: 'string', example: 'Updated T-Shirt', description: 'Product name' },
+        description: { type: 'string', example: 'Updated description', description: 'Product description' },
+        price: { type: 'number', example: 39.99, description: 'Product price' },
+        categoryId: { type: 'string', example: 'category-uuid', description: 'ID of the product category' },
+        images: { type: 'array', items: { type: 'string' }, example: ['image1.jpg', 'image2.jpg'], description: 'Product images' },
+        stock: { type: 'number', example: 100, description: 'Available stock' },
+        colors: { type: 'array', items: { type: 'string' }, example: ['Red', 'Blue', 'Black'], description: 'Available colors' },
+        sizes: { type: 'array', items: { type: 'string' }, example: ['S', 'M', 'L', 'XL'], description: 'Available sizes' },
+        isAvailable: { type: 'boolean', example: true, description: 'Product availability status' }
       }
     }
   })

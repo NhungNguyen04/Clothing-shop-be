@@ -63,8 +63,6 @@ export class UserController {
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'Returns all users' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll() {
     try {
@@ -88,8 +86,6 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Returns user details' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -110,25 +106,28 @@ export class UserController {
       });
     }
   }
-
+  
   @ApiOperation({ summary: 'Update user' })
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiBody({ 
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string' },
-        name: { type: 'string' }
+        name: { type: 'string', minLength: 2, description: 'Name must be at least 2 characters', nullable: true },
+        email: { type: 'string', format: 'email', description: 'Valid email address', nullable: true },
+        password: { type: 'string', minLength: 6, description: 'Password must be at least 6 characters', nullable: true },
+        phoneNumber: { type: 'string', nullable: true },
+        image: { type: 'string', nullable: true },
+        address: { type: 'string', nullable: true },
+        postalCode: { type: 'string', nullable: true }
       }
     }
   })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: unknown) {
+  async update(@Param('id') id: string, @Body() body: unknown)  {
     const result = updateUserSchema.safeParse(body);
     
     if (!result.success) {
@@ -161,8 +160,6 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'User has related records' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     try {

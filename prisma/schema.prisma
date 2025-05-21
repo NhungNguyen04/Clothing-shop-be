@@ -45,12 +45,32 @@ enum UserRole {
   CUSTOMER
 }
 
+enum OrderStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  VIETQR
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   image     String?
   password  String?
+  phoneNumber     String?
+  address   String?
+  postalCode String?
   role      UserRole @default(CUSTOMER)
   isOAuth   Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -97,8 +117,7 @@ model Product {
   ratings       Int?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  Review          Review[]
-  Order           Order[]
+  Review        Review[]
 }
 
 model SizeStock {
@@ -108,6 +127,7 @@ model SizeStock {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   cartItems CartItem[]
+  orderItems OrderItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -121,26 +141,36 @@ model SystemParamater {
   updatedAt   DateTime @updatedAt
 }
 
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sizeStockId String
+  sizeStock  SizeStock @relation(fields: [sizeStockId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  quantity  Int
+  totalPrice Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Order {
-  id           String    @id @default(cuid())
-  orderDate    DateTime  @default(now())
-  totalPrice   Float
-  status       String
-  customerName String
-  address      String
-  phoneNumber  String
-  quantity     Int
-  price        Float
-  sellerId     String
-  seller       Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  size         String
-  productId    String
-  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade) // Relation with Product
-  shipment     Shipment?
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  phoneNumber       String
+  address    String
+  postalCode String?
+  paymentMethod PaymentMethod @default(COD)
+  paymentStatus PaymentStatus @default(PENDING)
+  sellerId    String
+  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderDate   DateTime @default(now())
+  totalPrice  Float
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orderItems   OrderItem[]
+  shipment    Shipment?
 }
 
 model Review {
@@ -162,7 +192,7 @@ model Shipment {
   status       String
   deliveryDate DateTime?
   orderId      String    @unique
-  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }

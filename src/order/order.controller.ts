@@ -1,4 +1,8 @@
-import { CreateOrderInput, createOrderSchema, UpdateOrderInput, updateOrderSchema } from '@/schemas';
+import { 
+  CreateOrderInput, createOrderSchema, 
+  UpdateOrderInput, updateOrderSchema, 
+  CartToOrderInput, cartToOrderSchema 
+} from '@/schemas';
 import { Body, Controller, Get, Param, Post, Delete, Patch } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
@@ -14,22 +18,25 @@ export class OrderController {
         schema: {
             type: 'object',
             properties: {
-                userId: { type: 'string', example: 'user-uuid' },
-                items: {
+                userId: { type: 'string' },
+                sellerId: { type: 'string' },
+                phoneNumber: { type: 'string' },
+                address: { type: 'string' },
+                postalCode: { type: 'string' },
+                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR'] },
+                orderItems: {
                     type: 'array',
                     items: {
                         type: 'object',
                         properties: {
-                            productId: { type: 'string', example: 'product-uuid' },
-                            quantity: { type: 'number', example: 2 },
-                            price: { type: 'number', example: 29.99 }
+                            sizeStockId: { type: 'string' },
+                            quantity: { type: 'number' },
+                            price: { type: 'number' }
                         }
                     }
-                },
-                shippingAddress: { type: 'string', example: '123 Main St, City' },
-                // Add other required properties
+                }
             },
-            required: ['userId', 'items']
+            required: ['userId', 'sellerId', 'phoneNumber', 'address', 'orderItems']
         }
     })
     @ApiResponse({ status: 201, description: 'Order created successfully' })
@@ -72,25 +79,17 @@ export class OrderController {
     @Get('/seller/:sellerId')
     async findBySeller(@Param('sellerId') sellerId: string) {
         try {
-            const orders = await this.orderService.findBySeller(sellerId)
-            if (!orders) {
-                return {
-                    success: false,
-                    message: `Orders with ID ${sellerId} not found`,
-                    error: null,
-                    data: null
-                };
-            }
+            const orders = await this.orderService.findBySeller(sellerId);
             return {
                 success: true,
-                message: 'Order fetched successfully',
+                message: 'Orders fetched successfully',
                 error: null,
                 data: orders
             };
         } catch (error) {
             return {
                 success: false,
-                message: error.message || 'Failed to fetch order',
+                message: error.message || 'Failed to fetch orders',
                 error: error.name,
                 data: null
             };
@@ -105,14 +104,6 @@ export class OrderController {
     async findOne(@Param('orderId') orderId: string) {
         try {
             const order = await this.orderService.findOne(orderId);
-            if (!order) {
-                return {
-                    success: false,
-                    message: `Order with ID ${orderId} not found`,
-                    error: null,
-                    data: null
-                };
-            }
             return {
                 success: true,
                 message: 'Order fetched successfully',
@@ -135,9 +126,17 @@ export class OrderController {
         schema: {
             type: 'object',
             properties: {
-                status: { type: 'string', example: 'PROCESSING' },
-                shippingAddress: { type: 'string', example: 'Updated address' },
-                // Add other updatable properties
+                status: { 
+                    type: 'string', 
+                    enum: ['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] 
+                },
+                paymentStatus: { 
+                    type: 'string', 
+                    enum: ['PENDING', 'SUCCESS'] 
+                },
+                shipmentStatus: { type: 'string' },
+                deliveryDate: { type: 'string', format: 'date-time' },
+                cancelReason: { type: 'string' }
             }
         }
     })
@@ -158,15 +157,6 @@ export class OrderController {
             }
 
             const updatedOrder = await this.orderService.update(orderId, validationResult.data);
-            if (!updatedOrder) {
-                return {
-                    success: false,
-                    message: `Order with ID ${orderId} not found`,
-                    error: null,
-                    data: null
-                };
-            }
-
             return {
                 success: true,
                 message: 'Order updated successfully',
@@ -191,15 +181,6 @@ export class OrderController {
     async delete(@Param('orderId') orderId: string) {
         try {
             const deletedOrder = await this.orderService.delete(orderId);
-            if (!deletedOrder) {
-                return {
-                    success: false,
-                    message: `Order with ID ${orderId} not found`,
-                    error: null,
-                    data: null
-                };
-            }
-
             return {
                 success: true,
                 message: 'Order deleted successfully',
@@ -220,7 +201,7 @@ export class OrderController {
     @ApiParam({ name: 'userId', description: 'User ID' })
     @ApiResponse({ status: 200, description: 'Returns user orders' })
     @Get('/user/:userId')
-    async get(@Param('userId') userId: string) {
+    async findByUser(@Param('userId') userId: string) {
         try {
             const orders = await this.orderService.findByUser(userId);
             return {
@@ -233,6 +214,60 @@ export class OrderController {
             return {
                 success: false,
                 message: error.message || 'Failed to fetch user orders',
+                error: error.name,
+                data: null
+            };
+        }
+    }
+
+    @ApiOperation({ summary: 'Create order from selected cart items' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                cartId: { type: 'string' },
+                userId: { type: 'string' },
+                phoneNumber: { type: 'string' },
+                address: { type: 'string' },
+                postalCode: { type: 'string' },
+                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR'] },
+                selectedCartItemIds: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'IDs of selected cart items to checkout'
+                }
+            },
+            required: ['cartId', 'userId', 'phoneNumber', 'address', 'selectedCartItemIds']
+        }
+    })
+    @ApiResponse({ status: 201, description: 'Order created successfully from cart' })
+    @Post('/from-cart')
+    async createFromCart(@Body() cartToOrderDto: CartToOrderInput) {
+        try {
+            const validationResult = cartToOrderSchema.safeParse(cartToOrderDto);
+
+            if (!validationResult.success) {
+                return {
+                    success: false,
+                    message: 'Validation failed',
+                    error: validationResult.error.format(),
+                    data: null
+                };
+            }
+
+            const { cartId, userId, ...orderData } = validationResult.data;
+            const orders = await this.orderService.createFromCart(userId, cartId, orderData);
+            
+            return {
+                success: true,
+                message: 'Orders created successfully from selected cart items',
+                error: null,
+                data: orders
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to create orders from cart',
                 error: error.name,
                 data: null
             };

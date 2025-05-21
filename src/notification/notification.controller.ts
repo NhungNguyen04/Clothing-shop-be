@@ -50,7 +50,11 @@ export class NotificationController {
   async createNotification(
     @Body() data: { userId: string; message: string },
   ): Promise<Notification> {
-    return this.notificationService.createNotification(data);
+    const notification = await this.notificationService.createNotification(data);
+    if (!notification) {
+      throw new Error('Failed to create notification');
+    }
+    return notification;
   }
 
   @ApiOperation({ summary: 'Mark notification as read', description: 'Marks a specific notification as read' })
