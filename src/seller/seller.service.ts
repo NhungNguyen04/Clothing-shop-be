@@ -24,17 +24,38 @@ export class SellerService {
           `User with ID ${createSellerDto.userId} not found`,
         );
       }
+      
+      const { addressInfo, ...sellerData } = createSellerDto;
 
+      // Create the seller first
       const seller = await prisma.seller.create({
         data: {
           userId: user?.id,
-          ...(() => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { userId, ...rest } = createSellerDto;
-            return rest;
-          })(),
+          email: sellerData.email,
+          managerName: sellerData.managerName,
+          status: sellerData.status,
         },
-        include: { user: true },
+      });
+
+      // Then create the address with a reference to the seller
+      const address = await prisma.address.create({
+        data: {
+          sellerId: seller.id,
+          address: addressInfo.address,
+          phoneNumber: addressInfo.phoneNumber,
+          postalCode: addressInfo.postalCode,
+          street: addressInfo.street,
+          ward: addressInfo.ward,
+          district: addressInfo.district,
+          province: addressInfo.province,
+        },
+      });
+
+      // Update the seller with the addressId
+      const updatedSeller = await prisma.seller.update({
+        where: { id: seller.id },
+        data: { addressId: address.id },
+        include: { address: true, user: true },
       });
 
       // Update user role to SELLER
@@ -43,7 +64,7 @@ export class SellerService {
         data: { role: 'SELLER' },
       });
 
-      return { seller };
+      return { seller: updatedSeller };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -63,6 +84,7 @@ export class SellerService {
     const sellers = await prisma.seller.findMany({
       include: {
         user: true,
+        address: true,
         products: {
           select: {
             id: true,
@@ -83,6 +105,7 @@ export class SellerService {
       where: { id },
       include: {
         user: true,
+        address: true,
         products: true,
       },
     });
@@ -99,6 +122,7 @@ export class SellerService {
       where: { userId },
       include: {
         user: true,
+        address: true,
         products: true,
       },
     });
@@ -114,15 +138,65 @@ export class SellerService {
     // Check if seller exists
     const existingSeller = await prisma.seller.findUnique({
       where: { id },
+      include: { address: true },
     });
 
     if (!existingSeller) {
       throw new NotFoundException(`Seller with ID ${id} not found`);
     }
 
-    const updatedSeller = await prisma.seller.update({
+    // Extract address-related fields
+    const { addressInfo, ...sellerData } = updateSellerDto;
+
+    // Update seller data
+    const updatedSellerData = await prisma.seller.update({
       where: { id },
-      data: updateSellerDto,
+      data: sellerData,
+    });
+
+    // Update address if provided
+    if (addressInfo && existingSeller.addressId) {
+      await prisma.address.update({
+        where: { id: existingSeller.addressId },
+        data: {
+          // Ensure non-nullable fields have default values
+          address: addressInfo.address ?? existingSeller.address?.address ?? "",
+          phoneNumber: addressInfo.phoneNumber ?? existingSeller.address?.phoneNumber ?? "",
+          postalCode: addressInfo.postalCode,
+          street: addressInfo.street,
+          ward: addressInfo.ward,
+          district: addressInfo.district,
+          province: addressInfo.province,
+        },
+      });
+    }
+    // Create new address if seller doesn't have one yet
+    else if (addressInfo && !existingSeller.addressId) {
+      const newAddress = await prisma.address.create({
+        data: {
+          sellerId: id,
+          // Ensure non-nullable fields have default values
+          address: addressInfo.address ?? "",
+          phoneNumber: addressInfo.phoneNumber ?? "",
+          postalCode: addressInfo.postalCode,
+          street: addressInfo.street,
+          ward: addressInfo.ward,
+          district: addressInfo.district,
+          province: addressInfo.province,
+        },
+      });
+      
+      // Link the address to the seller
+      await prisma.seller.update({
+        where: { id },
+        data: { addressId: newAddress.id },
+      });
+    }
+
+    // Get the updated seller with address
+    const updatedSeller = await prisma.seller.findUnique({
+      where: { id },
+      include: { address: true, user: true },
     });
 
     return { updatedSeller };
@@ -144,6 +218,11 @@ export class SellerService {
         where: { sellerId: id },
       });
     }
+
+    // Delete any addresses linked to this seller
+    await prisma.address.deleteMany({
+      where: { sellerId: id }
+    });
 
     // Delete the seller
     const deletedSeller = await prisma.seller.delete({

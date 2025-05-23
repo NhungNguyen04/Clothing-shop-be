@@ -62,15 +62,30 @@ enum PaymentStatus {
   SUCCESS
 }
 
+model Address {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sellerId  String?
+  seller    Seller?
+  phoneNumber String
+  address   String
+  postalCode String?
+  street String?
+  ward String?
+  district String?
+  province String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   image     String?
   password  String?
-  phoneNumber     String?
-  address   String?
-  postalCode String?
+  address   Address[]
   role      UserRole @default(CUSTOMER)
   isOAuth   Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -90,10 +105,9 @@ model Seller {
   userId      String        @unique
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   email       String?
-  address     String
-  phone       String
+  addressId String? @unique
+  address     Address?     @relation(fields: [addressId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   managerName String?
-  postalCode  String?
   status      SellerStatus?
   products    Product[]
   createdAt   DateTime      @default(now())

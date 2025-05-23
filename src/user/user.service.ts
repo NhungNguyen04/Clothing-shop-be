@@ -87,13 +87,8 @@ export class UserService {
   async findOne(id: string) {
     const user = await prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        address: true,
       },
     });
 
@@ -118,7 +113,10 @@ export class UserService {
   }
 
   async update(id: string, updateData: UpdateUserInput) {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({ 
+      where: { id },
+      include: { address: true }
+    });
     
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -130,21 +128,52 @@ export class UserService {
       data.password = await bcrypt.hash(updateData.password, 10);
     }
 
+    // Handle address updates if provided
+    if (updateData.address && updateData.address.length > 0) {
+      // First delete existing addresses that belong only to this user
+      await prisma.address.deleteMany({
+        where: { 
+          userId: id,
+          sellerId: null // Only delete addresses not linked to a seller
+        }
+      });
+      
+      // Then create new addresses
+      await Promise.all(
+        updateData.address.map(addressData => 
+          prisma.address.create({
+            data: {
+              userId: id,
+              phoneNumber: addressData.phoneNumber,
+              address: addressData.address,
+              postalCode: addressData.postalCode,
+              street: addressData.street,
+              ward: addressData.ward,
+              district: addressData.district,
+              province: addressData.province
+            }
+          })
+        )
+      );
+      
+      // Remove address from data to avoid Prisma errors
+      delete data.address;
+    }
+
     return prisma.user.update({
       where: { id },
       data,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        address: true,
       },
     });
   }
 
   async remove(id: string) {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({ 
+      where: { id },
+      include: { address: true }
+    });
     
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -155,15 +184,15 @@ export class UserService {
       if (seller) {
         await this.sellerService.remove(seller.id);
       }
+    } else {
+      // If not a seller, delete addresses directly
+      await prisma.address.deleteMany({
+        where: { userId: id }
+      });
     }
     
     return prisma.user.delete({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
     });
   }
 }

@@ -135,7 +135,7 @@ export class OrderService {
       // Calculate total price
       const totalPrice = typedItems.reduce((sum, item) => sum + item.totalPrice, 0);
       
-      // Create order
+      // Create order with extended transaction timeout (15 seconds instead of default 5)
       const order = await prisma.$transaction(async (tx) => {
         // 1. Create the order
         const newOrder = await tx.order.create({
@@ -180,15 +180,15 @@ export class OrderService {
         }
 
         await tx.product.updateMany({
-        where: {
-          id: { in: typedItems.map(item => item.sizeStock.productId) }
-        },
-        data: {
-          stockQuantity: {
-            decrement: typedItems.reduce((sum, item) => sum + item.quantity, 0)
+          where: {
+            id: { in: typedItems.map(item => item.sizeStock.productId) }
+          },
+          data: {
+            stockQuantity: {
+              decrement: typedItems.reduce((sum, item) => sum + item.quantity, 0)
+            }
           }
-        }
-      });
+        });
 
         // 5. Create shipment record
         await tx.shipment.create({
@@ -199,6 +199,9 @@ export class OrderService {
         });
 
         return newOrder;
+      }, {
+        // Increase timeout to 15 seconds to avoid transaction timeout
+        timeout: 15000
       });
 
       orders.push(order);

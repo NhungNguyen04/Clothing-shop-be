@@ -118,8 +118,23 @@ export class UserController {
         password: { type: 'string', minLength: 6, description: 'Password must be at least 6 characters', nullable: true },
         phoneNumber: { type: 'string', nullable: true },
         image: { type: 'string', nullable: true },
-        address: { type: 'string', nullable: true },
-        postalCode: { type: 'string', nullable: true }
+        address: { 
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              address: { type: 'string', minLength: 5 },
+              phoneNumber: { type: 'string', minLength: 8 },
+              postalCode: { type: 'string', pattern: '^\\d+$', nullable: true },
+              street: { type: 'string', nullable: true },
+              ward: { type: 'string', nullable: true },
+              district: { type: 'string', nullable: true },
+              province: { type: 'string', nullable: true }
+            },
+            required: ['address', 'phoneNumber']
+          },
+          nullable: true
+        }
       }
     }
   })

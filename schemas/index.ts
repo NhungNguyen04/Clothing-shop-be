@@ -13,59 +13,60 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export const createOAuthSchema = createUserSchema.omit({ password: true });
 export type CreateOAuthInput = z.infer<typeof createOAuthSchema>;
 
-export const updateUserSchema = z.object ({
+export const addressSchema = z.object({
+  address: z.string().min(5, { message: 'Address must be at least 5 characters' }),
+  phoneNumber: z.string().min(8, { message: 'Phone number must be at least 8 characters' }),
+  postalCode: z.string().min(5, { message: 'Postal Code must be at least 5 characters' })
+    .regex(/^\d+$/, { message: 'Postal Code must contain only digits' }).optional(),
+  street: z.string().optional(),
+  ward: z.string().optional(),
+  district: z.string().optional(),
+  province: z.string().optional()
+});
+
+export const updateUserSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }).optional(),
   email: z.string().email({ message: 'Invalid email format' }).optional(),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }).optional(),
-  phoneNumber: z.string().optional(),
   image: z.string().optional(),
-  address: z.string().optional(),
-  postalCode: z.string().optional()
-})
+  address: z.array(addressSchema).optional()
+});
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 // Seller schemas
 export const createSellerSchema = z.object({
   userId: z.string().min(1, { message: 'User ID is required' }),
-
   email: z
     .string()
     .min(1, { message: 'Email is required' })
     .email({ message: 'Invalid email format' }),
-
-  address: z
-    .string()
-    .min(5, { message: 'Address must be at least 5 characters' }),
-
-  phone: z
-    .string()
-    .min(10, { message: 'Phone number must be at least 10 characters' })
-    .regex(/^\d+$/, { message: 'Phone number must contain only digits' }),
-
+  
+  // Use the existing addressSchema
+  addressInfo: addressSchema,
+  
   managerName: z
     .string()
     .min(3, { message: 'Manager Name must be at least 3 characters' }),
-
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
-
-  postalCode: z
-    .string()
-    .min(5, { message: 'Postal Code must be at least 5 characters' })
-    .regex(/^\d+$/, { message: 'Postal Code must contain only digits' }),
 });
 
 export type CreateSellerInput = z.infer<typeof createSellerSchema>;
 
 export const updateSellerSchema = z.object({
-  address: z
+  // Seller fields
+  email: z
     .string()
-    .min(5, { message: 'Address must be at least 5 characters' })
+    .email({ message: 'Invalid email format' })
     .optional(),
-  phone: z
+  managerName: z
     .string()
-    .min(10, { message: 'Phone number must be at least 10 characters' })
+    .min(3, { message: 'Manager Name must be at least 3 characters' })
     .optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  
+  // Address fields - using the existing schema
+  addressInfo: addressSchema.partial().optional(),
 });
 
 export type UpdateSellerInput = z.infer<typeof updateSellerSchema>;
