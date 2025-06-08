@@ -4,6 +4,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import * as session from 'express-session';
 import * as passport from 'passport';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Session } from 'inspector/promises';
 
 async function bootstrap() {
   // Force console to show all logs
@@ -31,7 +32,7 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         maxAge: 60000 * 60 * 24, // 1 day
-      }
+      } as session.CookieOptions
     }),
   );
   
