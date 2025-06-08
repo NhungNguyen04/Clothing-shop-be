@@ -1,3 +1,4 @@
+import { IsLatitude } from 'class-validator';
 import { z } from 'zod';
 
 export const createUserSchema = z.object({
@@ -21,7 +22,9 @@ export const addressSchema = z.object({
   street: z.string().optional(),
   ward: z.string().optional(),
   district: z.string().optional(),
-  province: z.string().optional()
+  province: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional()
 });
 
 export const updateUserSchema = z.object({
@@ -63,10 +66,7 @@ export const updateSellerSchema = z.object({
     .string()
     .min(3, { message: 'Manager Name must be at least 3 characters' })
     .optional(),
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-  
-  // Address fields - using the existing schema
-  addressInfo: addressSchema.partial().optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional()
 });
 
 export type UpdateSellerInput = z.infer<typeof updateSellerSchema>;
@@ -147,6 +147,25 @@ export const createShipmentSchema = z.object({
   orderId: z.string().min(1, { message: 'OrderId is required' }),
 });
 
+
+// Address-specific schemas
+export const createAddressSchema = z.object({
+  userId: z.string().optional(),
+  sellerId: z.string().optional(),
+  phoneNumber: z.string().min(8, { message: 'Phone number must be at least 8 characters' }),
+  address: z.string().min(5, { message: 'Address must be at least 5 characters' }),
+  postalCode: z.string().min(5, { message: 'Postal Code must be at least 5 characters' })
+    .regex(/^\d+$/, { message: 'Postal Code must contain only digits' }).optional(),
+  street: z.string().optional(),
+  ward: z.string().optional(),
+  district: z.string().optional(),
+  province: z.string().optional(),
+});
+
+export const updateAddressSchema = createAddressSchema.partial();
+
+export type CreateAddressInput = z.infer<typeof createAddressSchema>;
+export type UpdateAddressInput = z.infer<typeof updateAddressSchema>;
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 

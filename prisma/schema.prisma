@@ -75,6 +75,8 @@ model Address {
   ward String?
   district String?
   province String?
+  latitude  Float?
+  longitude Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

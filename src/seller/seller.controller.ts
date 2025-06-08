@@ -156,4 +156,37 @@ export class SellerController {
       };
     }
   }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update seller status' })
+  @ApiParam({ name: 'id', description: 'Seller ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['PENDING' , 'APPROVED' , 'REJECTED'], example: 'active' }
+      },
+      required: ['status']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Seller status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  async updateStatus(@Param('id') id: string, @Body() body: { status: 'PENDING' | 'APPROVED' | 'REJECTED' }) {
+    try {
+      const { status } = body;
+      if (!status) {
+        throw new HttpException('Status is required', HttpStatus.BAD_REQUEST);
+      }
+
+
+      return await this.sellerService.updateStatus(id, status);
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || `Failed to update status for seller with ID ${id}`,
+        error: error.name,
+        data: null
+      };
+    }
+  }
 }

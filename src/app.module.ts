@@ -24,6 +24,7 @@ import { ConversationController } from './conversation/conversation.controller';
 import { ConversationModule } from './conversation/converstation.module';
 import { MessageModule } from './message/message.module';
 import { NotificationModule } from './notification/notification.module';
+import { AddressModule } from './address/address.module';
 
 
 @Module({
@@ -43,7 +44,8 @@ import { NotificationModule } from './notification/notification.module';
     SizeStockModule,
     ConversationModule,
     MessageModule,
-    NotificationModule
+    NotificationModule,
+    AddressModule
   ],
   controllers: [
     AppController,

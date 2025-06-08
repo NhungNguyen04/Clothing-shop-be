@@ -117,24 +117,8 @@ export class UserController {
         email: { type: 'string', format: 'email', description: 'Valid email address', nullable: true },
         password: { type: 'string', minLength: 6, description: 'Password must be at least 6 characters', nullable: true },
         phoneNumber: { type: 'string', nullable: true },
-        image: { type: 'string', nullable: true },
-        address: { 
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              address: { type: 'string', minLength: 5 },
-              phoneNumber: { type: 'string', minLength: 8 },
-              postalCode: { type: 'string', pattern: '^\\d+$', nullable: true },
-              street: { type: 'string', nullable: true },
-              ward: { type: 'string', nullable: true },
-              district: { type: 'string', nullable: true },
-              province: { type: 'string', nullable: true }
-            },
-            required: ['address', 'phoneNumber']
-          },
-          nullable: true
-        }
+        image: { type: 'string', nullable: true }
+        // Address property removed
       }
     }
   })

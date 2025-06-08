@@ -8,10 +8,11 @@ import {
 import { prisma } from '@/prisma/prisma';
 import { Prisma } from '@prisma/client';
 import { CreateSellerInput, UpdateSellerInput } from '@/schemas';
+import { AddressService } from '../address/address.service';
 
 @Injectable()
 export class SellerService {
-  constructor() {}
+  constructor(private readonly addressService: AddressService) {}
 
   async create(createSellerDto: CreateSellerInput) {
     try {
@@ -26,7 +27,7 @@ export class SellerService {
       }
       
       const { addressInfo, ...sellerData } = createSellerDto;
-
+      
       // Create the seller first
       const seller = await prisma.seller.create({
         data: {
@@ -37,25 +38,16 @@ export class SellerService {
         },
       });
 
-      // Then create the address with a reference to the seller
-      const address = await prisma.address.create({
-        data: {
-          sellerId: seller.id,
-          address: addressInfo.address,
-          phoneNumber: addressInfo.phoneNumber,
-          postalCode: addressInfo.postalCode,
-          street: addressInfo.street,
-          ward: addressInfo.ward,
-          district: addressInfo.district,
-          province: addressInfo.province,
-        },
-      });
-
-      // Update the seller with the addressId
-      const updatedSeller = await prisma.seller.update({
-        where: { id: seller.id },
-        data: { addressId: address.id },
-        include: { address: true, user: true },
+      // Use AddressService to create the address
+      const address = await this.addressService.create({
+        sellerId: seller.id,
+        phoneNumber: addressInfo.phoneNumber,
+        address: addressInfo.address,
+        postalCode: addressInfo.postalCode,
+        street: addressInfo.street,
+        ward: addressInfo.ward,
+        district: addressInfo.district,
+        province: addressInfo.province,
       });
 
       // Update user role to SELLER
@@ -64,7 +56,12 @@ export class SellerService {
         data: { role: 'SELLER' },
       });
 
-      return { seller: updatedSeller };
+      return { 
+        seller: {
+          ...seller,
+          address
+        }
+      };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -84,7 +81,6 @@ export class SellerService {
     const sellers = await prisma.seller.findMany({
       include: {
         user: true,
-        address: true,
         products: {
           select: {
             id: true,
@@ -105,7 +101,6 @@ export class SellerService {
       where: { id },
       include: {
         user: true,
-        address: true,
         products: true,
       },
     });
@@ -122,7 +117,6 @@ export class SellerService {
       where: { userId },
       include: {
         user: true,
-        address: true,
         products: true,
       },
     });
@@ -138,65 +132,18 @@ export class SellerService {
     // Check if seller exists
     const existingSeller = await prisma.seller.findUnique({
       where: { id },
-      include: { address: true },
     });
 
     if (!existingSeller) {
       throw new NotFoundException(`Seller with ID ${id} not found`);
     }
 
-    // Extract address-related fields
-    const { addressInfo, ...sellerData } = updateSellerDto;
+    const { ...sellerData } = updateSellerDto;
 
     // Update seller data
-    const updatedSellerData = await prisma.seller.update({
+    const updatedSeller = await prisma.seller.update({
       where: { id },
       data: sellerData,
-    });
-
-    // Update address if provided
-    if (addressInfo && existingSeller.addressId) {
-      await prisma.address.update({
-        where: { id: existingSeller.addressId },
-        data: {
-          // Ensure non-nullable fields have default values
-          address: addressInfo.address ?? existingSeller.address?.address ?? "",
-          phoneNumber: addressInfo.phoneNumber ?? existingSeller.address?.phoneNumber ?? "",
-          postalCode: addressInfo.postalCode,
-          street: addressInfo.street,
-          ward: addressInfo.ward,
-          district: addressInfo.district,
-          province: addressInfo.province,
-        },
-      });
-    }
-    // Create new address if seller doesn't have one yet
-    else if (addressInfo && !existingSeller.addressId) {
-      const newAddress = await prisma.address.create({
-        data: {
-          sellerId: id,
-          // Ensure non-nullable fields have default values
-          address: addressInfo.address ?? "",
-          phoneNumber: addressInfo.phoneNumber ?? "",
-          postalCode: addressInfo.postalCode,
-          street: addressInfo.street,
-          ward: addressInfo.ward,
-          district: addressInfo.district,
-          province: addressInfo.province,
-        },
-      });
-      
-      // Link the address to the seller
-      await prisma.seller.update({
-        where: { id },
-        data: { addressId: newAddress.id },
-      });
-    }
-
-    // Get the updated seller with address
-    const updatedSeller = await prisma.seller.findUnique({
-      where: { id },
-      include: { address: true, user: true },
     });
 
     return { updatedSeller };
@@ -219,11 +166,6 @@ export class SellerService {
       });
     }
 
-    // Delete any addresses linked to this seller
-    await prisma.address.deleteMany({
-      where: { sellerId: id }
-    });
-
     // Delete the seller
     const deletedSeller = await prisma.seller.delete({
       where: { id },
@@ -236,5 +178,28 @@ export class SellerService {
     });
 
     return { deletedSeller };
+  }
+
+  async updateStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED') {
+    const seller = await prisma.seller.findUnique({
+      where: { id },
+    });
+
+    if (!seller) {
+      throw new NotFoundException(`Seller with ID ${id} not found`);
+    }
+
+    // Check if the status is already set to the requested value
+    if (seller.status === status) {
+      throw new ConflictException(`Seller with ID ${id} already has status ${status}`);
+    }
+
+    const updatedSeller = await prisma.seller.update({
+      where: { id },
+      data: { status },
+      include: { user: true },
+    });
+
+    return { updatedSeller };
   }
 }
