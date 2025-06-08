@@ -125,6 +125,7 @@ export class AuthController {
       }
       // Generate JWT token
       const loginResult = await this.authService.login(user);
+      Logger.log(`Login Result: ${JSON.stringify(loginResult)}`);
       
       // Determine where to redirect based on our RELIABLE platform value
       if (platform === 'mobile') {
@@ -137,11 +138,12 @@ export class AuthController {
         }
         
         // Add user data to URL if needed
-        if (user) {
+        if (loginResult.user) {
           const userData = encodeURIComponent(JSON.stringify({
-            id: user.id,
-            email: user.email,
-            name: user.name,
+            id: loginResult.user.id,
+            email: loginResult.user.email,
+            name: loginResult.user.name,
+            role: loginResult.user.role,
           }));
           mobileRedirectUrl += `&user=${userData}`;
         }
