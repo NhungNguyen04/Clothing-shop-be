@@ -386,4 +386,80 @@ export class OrderService {
       return deletedOrder;
     });
   }
+
+  async updateStatus(orderId: string): Promise<Order> {
+    // First, find the order
+    const order = await this.findOne(orderId);
+
+    // Determine the next status
+    let nextStatus: OrderStatus;
+    switch (order.status) {
+      case OrderStatus.PENDING:
+        nextStatus = OrderStatus.SHIPPED;
+        break;
+      case OrderStatus.SHIPPED:
+        nextStatus = OrderStatus.DELIVERED;
+        break;
+      case OrderStatus.DELIVERED:
+        throw new Error('Order is already delivered. No further status update possible.');
+      case OrderStatus.CANCELLED:
+        throw new Error('Order is cancelled. No further status update possible.');
+      default:
+        throw new Error('Invalid order status.');
+    }
+
+    // Update the order status
+    return await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: { status: nextStatus },
+        include: {
+          user: true,
+          seller: true,
+          orderItems: true,
+          shipment: true
+        }
+      });
+
+      // Send notification about status update
+      await this.notificationService.createNotification({
+        userId: updatedOrder.userId,
+        message: `Your order #${orderId} status has been updated to ${nextStatus}.`
+      });
+
+      return updatedOrder;
+    });
+  }
+
+  async cancelOrder(orderId: string): Promise<Order> {
+    // First, find the order
+    const order = await this.findOne(orderId);
+
+    // Check if the order can be cancelled
+    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.DELIVERED) {
+      throw new Error('Order cannot be cancelled as it is already cancelled or delivered.');
+    }
+
+    // Update the order status to CANCELLED
+    return await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.CANCELLED },
+        include: {
+          user: true,
+          seller: true,
+          orderItems: true,
+          shipment: true
+        }
+      });
+
+      // Send notification about cancellation
+      await this.notificationService.createNotification({
+        userId: updatedOrder.userId,
+        message: `Your order #${orderId} has been cancelled.`
+      });
+
+      return updatedOrder;
+    });
+  }
 }

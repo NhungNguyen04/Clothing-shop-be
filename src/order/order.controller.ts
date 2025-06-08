@@ -273,4 +273,62 @@ export class OrderController {
             };
         }
     }
+
+    @ApiOperation({ summary: 'Update status' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiResponse({ status: 200, description: 'Order status updated successfully' })
+    @Patch(':orderId/status')
+    async updateStatus(
+        @Param('orderId') orderId: string
+    ) {
+        try {
+            const updatedOrder = await this.orderService.updateStatus(orderId);
+            return {
+                success: true,
+                message: 'Order status updated successfully',
+                error: null,
+                data: updatedOrder
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to update order status',
+                error: error.name,
+                data: null
+            };
+        }
+    }
+
+    @ApiOperation({ summary: 'Cancel order' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                cancelReason: { type: 'string', description: 'Optional reason for cancellation' }
+            }
+        }
+    })
+    @ApiResponse({ status: 200, description: 'Order cancelled successfully' })
+    @Patch(':orderId/cancel')
+    async cancelOrder(
+        @Param('orderId') orderId: string,
+    ) {
+        try {
+            const cancelledOrder = await this.orderService.cancelOrder(orderId);
+            return {
+                success: true,
+                message: 'Order cancelled successfully',
+                error: null,
+                data: cancelledOrder
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to cancel order',
+                error: error.name,
+                data: null
+            };
+        }
+    }
 }

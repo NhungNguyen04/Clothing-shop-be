@@ -50,6 +50,11 @@ export class SellerService {
         province: addressInfo.province,
       });
 
+      const updatedSeller = await prisma.seller.update({
+        where: { id: seller.id },
+        data: { addressId: address.id },
+      });
+
       // Update user role to SELLER
       await prisma.user.update({
         where: { id: seller.userId },
@@ -58,7 +63,7 @@ export class SellerService {
 
       return { 
         seller: {
-          ...seller,
+          ...updatedSeller,
           address
         }
       };
