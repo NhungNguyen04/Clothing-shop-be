@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { prisma } from "@/prisma/prisma";
-import { CreateProductInput, UpdateProductInput } from "@/schemas";
+import { CreateProductInput, UpdateProductInput, createProductSchema } from "@/schemas";
+import * as XLSX from 'xlsx';
 
 @Injectable()
 export class ProductService {
@@ -174,5 +175,97 @@ export class ProductService {
     }
 
     return products
+  }
+
+  async importProducts(buffer: Buffer): Promise<any> {
+    try {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const productsData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+      const createdProducts: any[] = [];
+      for (const productData of productsData) {
+        // Map Excel column names to CreateProductInput fields
+        const createProductInput: CreateProductInput = {
+          name: productData.Name,
+          description: productData.Description,
+          price: parseFloat(productData.Price),
+          image: productData.ImageURLs ? productData.ImageURLs.split(',') : [],
+          category: productData.Category, 
+          subCategory: productData.SubCategory, 
+          sellerId: productData.SellerId,
+          stockSize: [], 
+        };
+
+        // Parse stockSize from 'SizesAndQuantities' column
+        if (productData.SizesAndQuantities) {
+          createProductInput.stockSize = productData.SizesAndQuantities.split(',').map(sq => {
+            const [size, quantity] = sq.split(':');
+            return {
+              size: size as any, 
+              quantity: parseInt(quantity, 10),
+            };
+          });
+        }
+
+        // Validate using Zod schema before creating
+        const validated = createProductSchema.safeParse(createProductInput);
+        if (!validated.success) {
+          throw new BadRequestException(`Validation failed for product: ${productData.Name} - ${JSON.stringify(validated.error.format())}`);
+        }
+
+        // Use the existing create method in ProductService to handle product creation and stockSize
+        const createdProduct = await this.create(validated.data);
+        createdProducts.push(createdProduct);
+      }
+
+      return createdProducts;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Failed to process Excel file: ${error.message}`);
+    }
+  }
+
+  async exportProductsToExcel(): Promise<Buffer> {
+    try {
+      const products = await prisma.product.findMany({
+        include: {
+          stockSize: true,
+          seller: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      const dataForExcel = products.map(product => ({
+        ID: product.id,
+        Name: product.name,
+        Description: product.description,
+        Price: product.price,
+        ImageURLs: product.image.join(','),
+        Category: product.category,
+        SubCategory: product.subCategory,
+        SellerId: product.sellerId,
+        SellerName: product.seller?.user?.name || 'N/A', 
+        StockQuantity: product.stockQuantity,
+        SizesAndQuantities: product.stockSize.map(ss => `${ss.size}:${ss.quantity}`).join(','),
+        CreatedAt: product.createdAt.toISOString(),
+        UpdatedAt: product.updatedAt.toISOString(),
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      return excelBuffer;
+    } catch (error) {
+      throw new BadRequestException(`Failed to export products to Excel: ${error.message}`);
+    }
   }
 }

@@ -32,6 +32,7 @@ export const updateUserSchema = z.object({
   email: z.string().email({ message: 'Invalid email format' }).optional(),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }).optional(),
   image: z.string().optional(),
+  role: z.enum(['ADMIN', 'SELLER', 'CUSTOMER']).optional(),
   address: z.array(addressSchema).optional()
 });
 

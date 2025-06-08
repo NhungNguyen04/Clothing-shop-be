@@ -1,7 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseInterceptors, UploadedFile, BadRequestException, Res } from "@nestjs/common";
 import { CreateProductInput, createProductSchema, UpdateProductInput } from "@/schemas";
 import { ProductService } from "./product.service";
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
+import { Response } from 'express';
 
 @ApiTags('Products')
 @Controller('products')
@@ -120,6 +123,26 @@ export class ProductController {
     }
   }
 
+  @ApiOperation({ summary: 'Export products to Excel file' })
+  @ApiResponse({ status: 200, description: 'Products exported successfully', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 500, description: 'Failed to export products' })
+  @Get('export')
+  async exportProducts(@Res() res: Response) {
+    try {
+      const excelBuffer = await this.productService.exportProductsToExcel();
+      res.setHeader('Content-Disposition', 'attachment; filename=products.xlsx');
+      res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(excelBuffer);
+    } catch (error) {
+      throw new BadRequestException({
+        success: false,
+        message: error.message || 'Failed to export products',
+        error: error.response?.error || error.name,
+        data: null
+      });
+    }
+  }
+
   @ApiOperation({ summary: 'Get product by ID' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiResponse({ status: 200, description: 'Returns product details' })
@@ -205,6 +228,45 @@ export class ProductController {
         error: error.response?.error || error.name,
         data: null
       };
+    }
+  }
+
+  @ApiOperation({ summary: 'Import products from Excel file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Products imported successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid file or import failed' })
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  async importProducts(@UploadedFile() file: Express.Multer.File) {
+    if (!file || file.mimetype !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      throw new BadRequestException('Invalid file type. Only .xlsx files are allowed.');
+    }
+
+    try {
+      const result = await this.productService.importProducts(file.buffer);
+      return {
+        success: true,
+        message: 'Products imported successfully',
+        data: result,
+      };
+    } catch (error) {
+      throw new BadRequestException({
+        success: false,
+        message: error.message || 'Failed to import products',
+        error: error.response?.error || error.name,
+        data: null
+      });
     }
   }
 }
