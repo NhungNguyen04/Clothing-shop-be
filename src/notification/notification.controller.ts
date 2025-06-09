@@ -1,35 +1,34 @@
 import { Controller, Get, Post, Body, Param, Delete, Put, UseGuards, Req } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { Notification } from '@prisma/client';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('notifications')
-@ApiBearerAuth()
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @ApiOperation({ summary: 'Get all user notifications', description: 'Retrieves all notifications for the authenticated user' })
+  @ApiOperation({ summary: 'Get all user notifications', description: 'Retrieves all notifications for a user' })
   @ApiResponse({ status: 200, description: 'Returns an array of notifications' })
-  @Get()
-  async getUserNotifications(@Req() req): Promise<Notification[]> {
-    const userId = req.user.id;
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @Get('user/:userId')
+  async getUserNotifications(@Param('userId') userId: string): Promise<Notification[]> {
     return this.notificationService.getNotificationsByUserId(userId);
   }
 
-  @ApiOperation({ summary: 'Get unread notifications', description: 'Retrieves all unread notifications for the authenticated user' })
+  @ApiOperation({ summary: 'Get unread notifications', description: 'Retrieves all unread notifications for a user' })
   @ApiResponse({ status: 200, description: 'Returns an array of unread notifications' })
-  @Get('unread')
-  async getUnreadNotifications(@Req() req): Promise<Notification[]> {
-    const userId = req.user.id;
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @Get('user/:userId/unread')
+  async getUnreadNotifications(@Param('userId') userId: string): Promise<Notification[]> {
     return this.notificationService.getUnreadNotifications(userId);
   }
 
-  @ApiOperation({ summary: 'Get notification count', description: 'Retrieves the total count of notifications for the authenticated user' })
+  @ApiOperation({ summary: 'Get notification count', description: 'Retrieves the total count of notifications for a user' })
   @ApiResponse({ status: 200, description: 'Returns the count of notifications', type: Object })
-  @Get('count')
-  async getNotificationCount(@Req() req): Promise<{ count: number }> {
-    const userId = req.user.id;
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @Get('user/:userId/count')
+  async getNotificationCount(@Param('userId') userId: string): Promise<{ count: number }> {
     const count = await this.notificationService.getNotificationCount(userId);
     return { count };
   }
@@ -65,11 +64,11 @@ export class NotificationController {
     return this.notificationService.markAsRead(id);
   }
 
-  @ApiOperation({ summary: 'Mark all notifications as read', description: 'Marks all notifications of the authenticated user as read' })
+  @ApiOperation({ summary: 'Mark all notifications as read', description: 'Marks all notifications of a user as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read', type: Object })
-  @Put('read-all')
-  async markAllAsRead(@Req() req): Promise<{ success: boolean; count: number }> {
-    const userId = req.user.id;
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @Put('user/:userId/read-all')
+  async markAllAsRead(@Param('userId') userId: string): Promise<{ success: boolean; count: number }> {
     const result = await this.notificationService.markAllAsRead(userId);
     return { 
       success: true, 

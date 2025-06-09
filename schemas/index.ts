@@ -90,6 +90,8 @@ export const createProductSchema = z.object({
       quantity: z.number().int().nonnegative(),
     }),
   ),
+  averageRating: z.number().min(0).max(5).optional(),
+  reviews: z.number().int().nonnegative().optional(),
 });
 
 
