@@ -67,7 +67,8 @@ export const updateSellerSchema = z.object({
     .string()
     .min(3, { message: 'Manager Name must be at least 3 characters' })
     .optional(),
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional()
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  image: z.string().optional(),
 });
 
 export type UpdateSellerInput = z.infer<typeof updateSellerSchema>;
@@ -187,4 +188,12 @@ export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
 export const updateShipmentSchema = createShipmentSchema.partial();
 
 export type UpdateShipmentInput = z.infer<typeof updateShipmentSchema>;
+
+// Message schema for websockets
+export const createMessageSocketSchema = z.object({
+  conversationId: z.string().min(1, { message: 'Conversation ID is required' }),
+  content: z.string().min(1, { message: 'Message content is required' }),
+});
+
+export type CreateMessageSocketInput = z.infer<typeof createMessageSocketSchema>;
 

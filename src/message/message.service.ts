@@ -1,8 +1,13 @@
 import { prisma } from '@/prisma/prisma';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
 @Injectable()
+@WebSocketGateway()
 export class MessageService {
+  @WebSocketServer() server: Server;
+
   constructor() {}
 
   async getMessage(messageId: string) {
@@ -34,6 +39,15 @@ export class MessageService {
         senderId,
         content,
       },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
     });
 
     // Update conversation updatedAt time
@@ -41,6 +55,9 @@ export class MessageService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    // Emit socket event with the new message
+    this.server?.to(`conversation:${conversationId}`).emit('newMessage', message);
 
     return message;
   }

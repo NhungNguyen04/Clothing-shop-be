@@ -107,6 +107,7 @@ export class SellerService {
       include: {
         user: true,
         products: true,
+        address: true,
       },
     });
 

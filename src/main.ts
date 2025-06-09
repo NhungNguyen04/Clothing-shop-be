@@ -5,6 +5,8 @@ import * as session from 'express-session';
 import * as passport from 'passport';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Session } from 'inspector/promises';
+import { ValidationPipe } from '@nestjs/common';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   // Force console to show all logs
@@ -22,7 +24,11 @@ async function bootstrap() {
   });
   
   // Enable CORS
-  app.enableCors();
+  app.enableCors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  });
   
   // Add session middleware before passport initialization
   app.use(
@@ -41,6 +47,12 @@ async function bootstrap() {
   app.use(passport.session());
   
   app.useGlobalFilters(new PrismaExceptionFilter());
+  
+  // Use WebSockets with CORS support
+  app.useWebSocketAdapter(new IoAdapter(app));
+  
+  // Setup validation
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   // Add middleware to log all requests
   app.use((req, res, next) => {
@@ -53,10 +65,12 @@ async function bootstrap() {
     console.info(`LOG: ${message}`);
   };
 
+  // Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('Clothing shop')
     .setDescription('The clothing shop API description')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

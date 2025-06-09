@@ -20,11 +20,10 @@ import { ReviewModule } from './review/review.module';
 import { ShipmentModule } from './shipment/shipment.module';
 import { CartModule } from './cart/cart.module';
 import { SizeStockModule } from './sizeStock/sizeStock.module';
-import { ConversationController } from './conversation/conversation.controller';
-import { ConversationModule } from './conversation/converstation.module';
 import { MessageModule } from './message/message.module';
 import { NotificationModule } from './notification/notification.module';
 import { AddressModule } from './address/address.module';
+import { ConversationModule } from './conversation/conversation.module';
 
 
 @Module({
@@ -45,7 +44,7 @@ import { AddressModule } from './address/address.module';
     ConversationModule,
     MessageModule,
     NotificationModule,
-    AddressModule
+    AddressModule,
   ],
   controllers: [
     AppController,

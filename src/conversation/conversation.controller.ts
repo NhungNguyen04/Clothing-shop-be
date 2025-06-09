@@ -52,4 +52,13 @@ export class ConversationController {
   async getSellerConversations(@Param('sellerId') sellerId: string) {
     return this.conversationService.getSellerConversations(sellerId);
   }
+
+  @Get('/last-message/:conversationId')
+  @ApiOperation({ summary: 'Get the last message of a conversation' })
+  @ApiResponse({ status: 200, description: 'Last message retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'Conversation not found.' })
+  @ApiParam({ name: 'conversationId', description: 'Conversation ID', example: 'conv123' })
+  async getLastMessage(@Param('conversationId') conversationId: string) {
+    return this.conversationService.getLastMessage(conversationId);
+  }
 }

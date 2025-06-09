@@ -53,6 +53,7 @@ export class ConversationService {
                 image: true,
               },
             },
+            image: true,
           },
         },
       },
@@ -85,6 +86,7 @@ export class ConversationService {
                 image: true,
               },
             },
+            image: true,
           },
         },
       },
@@ -116,5 +118,25 @@ export class ConversationService {
         updatedAt: 'desc',
       },
     });
+  }
+
+  async getLastMessage(conversationId: string) {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!conversation || conversation.messages.length === 0) {
+      throw new NotFoundException(`No messages found for conversation with ID ${conversationId}`);
+    }
+
+    return conversation.messages[0];
   }
 }

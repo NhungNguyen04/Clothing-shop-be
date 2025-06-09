@@ -107,6 +107,7 @@ model Seller {
   userId      String        @unique
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   email       String?
+  image       String?
   addressId String? @unique
   address     Address?     @relation(fields: [addressId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   managerName String?
