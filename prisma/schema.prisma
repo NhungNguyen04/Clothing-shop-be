@@ -269,3 +269,13 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// New model for tracking report generation
+model Report {
+  id          String   @id @default(cuid())
+  reportType  String   // sales, inventory, users, orders, etc.
+  parameters  Json?    // filters or parameters used for the report
+  generatedBy String   // admin user ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

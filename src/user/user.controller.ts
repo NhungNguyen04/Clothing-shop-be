@@ -189,4 +189,50 @@ export class UserController {
       });
     }
   }
+
+  @ApiOperation({ summary: 'Update role' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', enum: ['CUSTOMER', 'ADMIN', 'SELLER'], description: 'Role must be either CUSTOMER, SELLER or ADMIN' }
+      },
+      required: ['role']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Role updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Patch(':id/role')
+  async updateRole(@Param('id') id: string, @Body() body: { role: string }) {
+    const { role } = body;
+
+    const allowedRoles = ['CUSTOMER', 'ADMIN', 'SELLER'];
+    if (!role || !allowedRoles.includes(role)) {
+      throw new BadRequestException({
+        success: false,
+        message: 'Invalid role. Must be either CUSTOMER, SELLER or ADMIN.'
+      });
+    }
+
+    try {
+      const updatedUser = await this.userService.updateRole(id, role as 'CUSTOMER' | 'SELLER' | 'ADMIN');
+      return {
+        success: true,
+        message: 'Role updated successfully',
+        data: updatedUser
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        success: false,
+        message: 'Failed to update role',
+        error: error.message
+      });
+    }
+  }
 }

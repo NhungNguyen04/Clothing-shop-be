@@ -151,4 +151,27 @@ export class UserService {
       where: { id },
     });
   }
+
+  async updateRole(id: string, role: 'CUSTOMER' | 'SELLER' | 'ADMIN') {
+    const user = await prisma.user.findUnique({ 
+      where: { id },
+    });
+    
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
 }
