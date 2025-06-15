@@ -87,6 +87,7 @@ model User {
   email     String   @unique
   image     String?
   password  String?
+  emailVerified Boolean @default(false)
   address   Address[]
   role      UserRole @default(CUSTOMER)
   isOAuth   Boolean  @default(false)

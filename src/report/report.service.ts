@@ -350,7 +350,6 @@ export class ReportService {
     };
   }
 
-  // Log report generation
   async logReportGeneration(reportType: string, adminId: string, parameters?: any) {
     return prisma.report.create({
       data: {
