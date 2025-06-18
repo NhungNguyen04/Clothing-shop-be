@@ -271,7 +271,6 @@ model Notification {
   updatedAt DateTime @updatedAt
 }
 
-// New model for tracking report generation
 model Report {
   id          String   @id @default(cuid())
   reportType  String   // sales, inventory, users, orders, etc.
