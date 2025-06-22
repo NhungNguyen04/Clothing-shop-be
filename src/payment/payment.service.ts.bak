@@ -4,18 +4,11 @@ import { createHmac } from 'crypto';
 import * as qs from 'querystring';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { prisma } from '@/prisma/prisma';
-import {VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat, VnpCurrCode} from 'vnpay';
+import * as moment from 'moment';
 
 @Injectable()
 export class PaymentService {
-  private vnpay: VNPay;
-
-  constructor() {
-    this.vnpay = new VNPay({
-      tmnCode: vnpayConfig.vnp_TmnCode,
-      secureSecret: vnpayConfig.vnp_HashSecret as string,
-    });
-  }
+  constructor() {}
 
   /**
    * Create a payment URL for VNPAY
@@ -34,8 +27,13 @@ export class PaymentService {
       // Set timezone
       process.env.TZ = 'Asia/Ho_Chi_Minh';
       
-      const amount = Math.floor(order.totalPrice * 100); // Convert to smallest currency unit (cents)
+      // Create date format for VNPAY - using moment as in the demo code
+      const date = new Date();
+      const createDate = moment(date).format('YYYYMMDDHHmmss');
       const orderInfo = `Payment for order ${orderId}`;
+      const amount = Math.floor(order.totalPrice * 100); // Convert to smallest currency unit (cents)
+      const currCode = 'VND';
+      const locale = 'vn';
       
       // Update order payment method
       await prisma.order.update({
@@ -43,18 +41,36 @@ export class PaymentService {
         data: { paymentMethod: PaymentMethod.VNPAY }
       });
       
-      // Create payment URL using VNPay library
-      const paymentUrl = this.vnpay.buildPaymentUrl({
+      // Create VNPAY parameters
+      let vnp_Params: any = {
+        vnp_Version: '2.1.0',
+        vnp_Command: 'pay',
+        vnp_TmnCode: vnpayConfig.vnp_TmnCode,
+        vnp_Locale: locale,
+        vnp_CurrCode: currCode,
         vnp_TxnRef: orderId,
-        vnp_IpAddr: ipAddr,
-        vnp_Amount: amount,
         vnp_OrderInfo: orderInfo,
-        vnp_OrderType: ProductCode.Other,
-        vnp_Locale: VnpLocale.VN,
+        vnp_OrderType: 'other',
+        vnp_Amount: amount,
         vnp_ReturnUrl: vnpayConfig.vnp_ReturnUrl,
-        vnp_CreateDate: dateFormat(new Date(), 'yyyyMMddHHmmss'),
-        vnp_CurrCode: VnpCurrCode.VND,
-      });
+        vnp_IpAddr: ipAddr,
+        vnp_CreateDate: createDate,
+      };
+      
+      // Sort parameters before signing
+      const sortedParams = this.sortObject(vnp_Params);
+      const signData = qs.stringify(sortedParams);
+      
+      if (!vnpayConfig.vnp_HashSecret) {
+        throw new Error('VNPAY HashSecret is not defined');
+      }
+      
+      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret as string);
+      const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+      
+      vnp_Params['vnp_SecureHash'] = signed;
+        // Create the payment URL
+      const paymentUrl = vnpayConfig.vnp_Url + '?' + qs.stringify(vnp_Params);
       
       return paymentUrl;
     } catch (error) {
@@ -68,10 +84,19 @@ export class PaymentService {
    */
   async processVnpayReturn(params: any): Promise<any> {
     try {
-      // Verify the return data from VNPay
-      const isValidSignature = this.vnpay.verifyReturnUrl(params);
+      const secureHash = params['vnp_SecureHash'];
       
-      if (!isValidSignature) {
+      // Remove secure hash from params before verifying
+      const vnpParams = { ...params };
+      delete vnpParams['vnp_SecureHash'];
+      delete vnpParams['vnp_SecureHashType'];
+        // Verify signature
+      const sortedParams = this.sortObject(vnpParams);
+      const signData = qs.stringify(sortedParams);
+      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret as string);
+      const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+      
+      if (secureHash !== signed) {
         return { success: false, message: 'Invalid signature' };
       }
       
@@ -91,12 +116,12 @@ export class PaymentService {
       }
       
       // Check payment status
-      if (responseCode === '00') {
-        // Payment successful
+      if (responseCode === '00') {        // Payment successful
         await prisma.order.update({
           where: { id: orderId },
           data: { 
-            paymentStatus: PaymentStatus.SUCCESS
+            paymentStatus: PaymentStatus.SUCCESS,
+            // Store VNPay transaction details in metadata if needed
           }
         });
         
@@ -118,8 +143,7 @@ export class PaymentService {
           message: 'Payment successful',
           transactionId,
           payDate
-        };
-      } else {
+        };      } else {
         // Payment failed, but we keep it in pending status
         // as VNPAY might retry or the user might try again
         console.log(`Payment failed with code: ${responseCode}`);
@@ -140,13 +164,22 @@ export class PaymentService {
   /**
    * Process VNPAY IPN (Instant Payment Notification)
    * This is called by VNPAY servers to confirm payment status
-   */
-  async processVnpayIpn(params: any): Promise<any> {
+   */  async processVnpayIpn(params: any): Promise<any> {
     try {
-      // Verify the IPN data using VNPay library
-      const isValidSignature = this.vnpay.verifyReturnUrl(params);
+      const secureHash = params['vnp_SecureHash'];
       
-      if (!isValidSignature) {
+      // Remove secure hash from params before verifying
+      const vnpParams = { ...params };
+      delete vnpParams['vnp_SecureHash'];
+      delete vnpParams['vnp_SecureHashType'];
+      
+      // Verify signature
+      const sortedParams = this.sortObject(vnpParams);
+      const signData = qs.stringify(sortedParams);
+      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret as string);
+      const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+      
+      if (secureHash !== signed) {
         return { rspCode: '97', message: 'Checksum failed' };
       }
       
@@ -177,8 +210,7 @@ export class PaymentService {
       
       // Process based on response code
       if (responseCode === '00') {
-        // Payment successful
-        await prisma.order.update({
+        // Payment successful        await prisma.order.update({
           where: { id: orderId },
           data: { 
             paymentStatus: PaymentStatus.SUCCESS
@@ -199,8 +231,11 @@ export class PaymentService {
         
         return { rspCode: '00', message: 'Success' };
       } else {
-        // Payment failed - we keep it as PENDING since VNPay might retry
-        console.log(`Payment failed with code: ${responseCode}`);
+        // Payment failed
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { paymentStatus: PaymentStatus.FAILED }
+        });
         
         return { rspCode: '00', message: 'Success' }; // still return success to acknowledge receipt
       }
@@ -209,5 +244,48 @@ export class PaymentService {
       return { rspCode: '99', message: 'Unknown error' };
     }
   }
-    // Helper methods are now provided by the VNPay library
+  
+  /**
+   * Helper function to sort an object by keys - using exact implementation from VNPAY demo code
+   */
+  private sortObject(obj: any): any {
+    let sorted: any = {};
+    let str: string[] = [];
+    let key: any;
+    
+    for (key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        str.push(encodeURIComponent(key));
+      }
+    }
+    
+    str.sort();
+    for (key = 0; key < str.length; key++) {
+      sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    
+    return sorted;
+  }
+  
+  /**
+   * Helper function to format date
+   */
+  private dateFormat(date: Date, format: string): string {
+    const pad = (n: number): string => (n < 10 ? '0' + n : n.toString());
+    
+    const yyyy = date.getFullYear().toString();
+    const MM = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const HH = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
+    
+    return format
+      .replace('yyyy', yyyy)
+      .replace('MM', MM)
+      .replace('dd', dd)
+      .replace('HH', HH)
+      .replace('mm', mm)
+      .replace('ss', ss);
+  }
 }
