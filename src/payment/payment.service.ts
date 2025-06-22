@@ -55,7 +55,10 @@ export class PaymentService {
         // Sort parameters before signing
       const sortedParams = this.sortObject(vnp_Params);
       const signData = qs.stringify(sortedParams);
-      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret);
+      if (!vnpayConfig.vnp_HashSecret) {
+        throw new Error('VNPAY HashSecret is not defined');
+      }
+      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret as string);
       const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
       
       vnp_Params['vnp_SecureHash'] = signed;
@@ -84,7 +87,7 @@ export class PaymentService {
         // Verify signature
       const sortedParams = this.sortObject(vnpParams);
       const signData = qs.stringify(sortedParams);
-      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret);
+      const hmac = createHmac('sha512', vnpayConfig.vnp_HashSecret as string);
       const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
       
       if (secureHash !== signed) {
