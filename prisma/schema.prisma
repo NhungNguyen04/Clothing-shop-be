@@ -55,6 +55,7 @@ enum OrderStatus {
 enum PaymentMethod {
   COD
   VIETQR
+  VNPAY
 }
 
 enum PaymentStatus {

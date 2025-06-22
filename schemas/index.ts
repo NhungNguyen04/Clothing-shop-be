@@ -108,8 +108,7 @@ export const createOrderSchema = z.object({
   sellerId: z.string(),
   phoneNumber: z.string(),
   address: z.string(),
-  postalCode: z.string().optional(),
-  paymentMethod: z.enum(['COD', 'VIETQR']).default('COD'),
+  postalCode: z.string().optional(),  paymentMethod: z.enum(['COD', 'VIETQR', 'VNPAY']).default('COD'),
   orderItems: z.array(orderItemSchema)
 });
 
@@ -119,7 +118,7 @@ export const cartToOrderSchema = z.object({
   phoneNumber: z.string(),
   address: z.string(),
   postalCode: z.string().optional(),
-  paymentMethod: z.enum(['COD', 'VIETQR']).default('COD'),
+  paymentMethod: z.enum(['COD', 'VIETQR', 'VNPAY']).default('COD'),
   selectedCartItemIds: z.array(z.string())
 });
 

@@ -26,6 +26,7 @@ import { AddressModule } from './address/address.module';
 import { ConversationModule } from './conversation/conversation.module';
 import { ReportModule } from './report/report.module';
 import { SellerReportModule } from './sellerReport/sellerReport.module';
+import { PaymentModule } from './payment/payment.module';
 
 
 @Module({
@@ -48,7 +49,8 @@ import { SellerReportModule } from './sellerReport/sellerReport.module';
     NotificationModule,
     AddressModule,
     ReportModule,
-    SellerReportModule
+    SellerReportModule,
+    PaymentModule
   ],
   controllers: [
     AppController,

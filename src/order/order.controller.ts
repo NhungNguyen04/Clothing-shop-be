@@ -3,27 +3,31 @@ import {
   UpdateOrderInput, updateOrderSchema, 
   CartToOrderInput, cartToOrderSchema 
 } from '@/schemas';
-import { Body, Controller, Get, Param, Post, Delete, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Delete, Patch, Req } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { PaymentService } from '../payment/payment.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Request } from 'express';
 
 @ApiTags('Orders')
 @Controller('orders')
 export class OrderController {
     
-    constructor(private readonly orderService: OrderService) {}
+    constructor(
+        private readonly orderService: OrderService,
+        private readonly paymentService: PaymentService
+    ) {}
 
     @ApiOperation({ summary: 'Create a new order' })
     @ApiBody({
         schema: {
             type: 'object',
-            properties: {
-                userId: { type: 'string' },
+            properties: {                userId: { type: 'string' },
                 sellerId: { type: 'string' },
                 phoneNumber: { type: 'string' },
                 address: { type: 'string' },
                 postalCode: { type: 'string' },
-                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR'] },
+                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR', 'VNPAY'] },
                 orderItems: {
                     type: 'array',
                     items: {
@@ -227,10 +231,9 @@ export class OrderController {
             properties: {
                 cartId: { type: 'string' },
                 userId: { type: 'string' },
-                phoneNumber: { type: 'string' },
-                address: { type: 'string' },
+                phoneNumber: { type: 'string' },                address: { type: 'string' },
                 postalCode: { type: 'string' },
-                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR'] },
+                paymentMethod: { type: 'string', enum: ['COD', 'VIETQR', 'VNPAY'] },
                 selectedCartItemIds: {
                     type: 'array',
                     items: { type: 'string' },
@@ -326,6 +329,44 @@ export class OrderController {
             return {
                 success: false,
                 message: error.message || 'Failed to cancel order',
+                error: error.name,
+                data: null
+            };
+        }
+    }
+
+    @ApiOperation({ summary: 'Create VNPAY payment for order' })
+    @ApiParam({ name: 'orderId', description: 'Order ID' })
+    @ApiResponse({ status: 200, description: 'Payment URL created successfully' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
+    @Post(':orderId/vnpay-payment')
+    async createVnpayPayment(
+        @Param('orderId') orderId: string,
+        @Req() req: Request
+    ) {
+        try {
+            // Get the client's IP address
+            const ipAddr = req.headers['x-forwarded-for'] || 
+                           req.connection.remoteAddress || 
+                           req.socket.remoteAddress ||
+                           '127.0.0.1';
+            
+            // Create VNPAY payment URL
+            const paymentUrl = await this.paymentService.createVnpayPaymentUrl(
+                orderId, 
+                typeof ipAddr === 'string' ? ipAddr : ipAddr[0]
+            );
+            
+            return {
+                success: true,
+                message: 'VNPAY payment URL created successfully',
+                error: null,
+                data: { paymentUrl }
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to create VNPAY payment',
                 error: error.name,
                 data: null
             };
