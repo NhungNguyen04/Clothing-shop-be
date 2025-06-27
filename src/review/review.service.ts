@@ -192,4 +192,18 @@ export class ReviewService {
         
         return { success: true };
     }
+
+    async getAllReviews() {
+        return await prisma.review.findMany({
+            include: {
+                user: {
+                    select: { name: true, image: true }
+                },
+                product: {
+                    select: { name: true, sellerId: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
 }
