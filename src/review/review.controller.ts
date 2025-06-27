@@ -170,4 +170,26 @@ export class ReviewController {
             }
         }
     }
+
+    @ApiOperation({ summary: 'Get all reviews (admin only)' })
+    @ApiResponse({ status: 200, description: 'Returns all reviews' })
+    @Get()
+    async getAllReviews() {
+        try {
+            const result = await this.reviewService.getAllReviews();
+            return {
+                success: true,
+                message: 'All reviews fetched successfully',
+                error: null,
+                data: result
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch all reviews',
+                error: error.response?.error || error.name,
+                data: null
+            }
+        }
+    }
 }
