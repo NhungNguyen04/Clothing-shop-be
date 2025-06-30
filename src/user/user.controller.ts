@@ -242,6 +242,7 @@ export class UserController {
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 409, description: 'Email is already verified' })
   @ApiResponse({ status: 400, description: 'Failed to verify email' })
+  @Patch(':userId/verify')
   async verifyEmail(@Param('userId') userId: string) {
     try {
       const verifiedUser = await this.userService.verifyEmail(userId);
