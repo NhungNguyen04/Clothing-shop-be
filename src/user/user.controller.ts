@@ -235,4 +235,36 @@ export class UserController {
       });
     }
   }
+
+  @ApiOperation({ summary: 'Verify email' })
+  @ApiParam({ name: 'userId', description: 'User id' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Email is already verified' })
+  @ApiResponse({ status: 400, description: 'Failed to verify email' })
+  async verifyEmail(@Param('userId') userId: string) {
+    try {
+      const verifiedUser = await this.userService.verifyEmail(userId);
+      return {
+        success: true,
+        message: 'Email verified successfully',
+        data: verifiedUser
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error instanceof ConflictException) {
+        throw new ConflictException({
+          success: false,
+          message: error.message
+        });
+      }
+      throw new BadRequestException({
+        success: false,
+        message: 'Failed to verify email',
+        error: error.message
+      });
+    }
+  }
 }

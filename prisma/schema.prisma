@@ -88,7 +88,7 @@ model User {
   email     String   @unique
   image     String?
   password  String?
-  emailVerified Boolean @default(false)
+  emailVerified DateTime?
   address   Address[]
   role      UserRole @default(CUSTOMER)
   isOAuth   Boolean  @default(false)
@@ -102,6 +102,24 @@ model User {
   conversations Conversation[]
   sentMessages Message[] @relation("UserSentMessages")
   notifications Notification[]
+}
+
+model VerificationToken {
+  id String @id @default(cuid())
+  email String
+  token String @unique
+  expires DateTime
+
+  @@unique ([email, token])
+}
+
+model PasswordResetToken {
+  id String @id @default(cuid())
+  email String
+  token String @unique
+  expires DateTime
+
+  @@unique ([email, token])
 }
 
 model Seller {

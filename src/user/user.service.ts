@@ -4,6 +4,7 @@ import { CreateOAuthInput, CreateUserInput, UpdateUserInput } from '@/schemas';
 import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { SellerService } from '../seller/seller.service';
+import { date } from 'zod';
 
 @Injectable()
 export class UserService {
@@ -164,6 +165,33 @@ export class UserService {
     return prisma.user.update({
       where: { id },
       data: { role },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async verifyEmail(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (user.emailVerified) {
+      throw new ConflictException('Email is already verified');
+    }
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: new Date()},
       select: {
         id: true,
         email: true,
