@@ -29,6 +29,7 @@ import { SellerReportModule } from './sellerReport/sellerReport.module';
 import { PaymentModule } from './payment/payment.module';
 import { TokenModule } from './token/token.module';
 import { MailModule } from './mail/mail.module';
+import { TryOnModule } from './tryon/tryon.module';
 
 
 @Module({
@@ -54,7 +55,8 @@ import { MailModule } from './mail/mail.module';
     SellerReportModule,
     PaymentModule,
     TokenModule,
-    MailModule
+    MailModule,
+    TryOnModule
   ],
   controllers: [
     AppController,
