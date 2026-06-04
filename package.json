@@ -90,7 +90,10 @@
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
+    "moduleNameMapper": {
+      "^@/src/(.*)$": "<rootDir>/$1",
+      "^@/(.*)$": "<rootDir>/../$1"
+    },    "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
@@ -100,3 +103,5 @@
     "testEnvironment": "node"
   }
 }
+
+

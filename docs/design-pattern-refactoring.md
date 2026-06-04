@@ -2,27 +2,26 @@
 
 ## Summary
 
-Initial architecture assessment completed before code changes.
+Applied patterns:
 
-Applied patterns planned for this codebase:
+- Factory Method for external payment gateway creation.
+- Builder for shared order creation payload construction.
+- Strategy for seller report date range and revenue grouping algorithms.
+- State for order lifecycle transition and cancellation rules.
+- Observer/Event for order and payment notification side effects.
 
-- Factory Method: payment gateway creation in the payment module.
-- Builder: order creation payload construction shared by direct order and cart checkout flows.
-- Strategy: seller report time-range and revenue grouping rules.
-- State: order status transition and cancellation rules.
-- Observer/Event: notification side effects emitted from order and payment workflows.
+Additional verification support:
 
-The backend is a NestJS application using Prisma directly from services. Most controllers are CRUD wrappers and should not receive extra pattern layers. The valuable refactoring targets are concentrated in `order`, `payment`, `notification`, and `sellerReport`.
+- Added Jest alias mapping for the existing `@/...` TypeScript path alias.
+- Updated affected Nest smoke specs with the minimal providers required by the refactored dependency graph.
 
 ## Factory Method
 
 ### Reason
 
-The payment module has a hardcoded VNPAY client inside `PaymentService`. Payment methods are already modeled as runtime values (`COD`, `VIETQR`, `VNPAY`), so gateway creation should be isolated behind a factory before additional providers add service-level branching.
+`PaymentService` directly instantiated and used the VNPay SDK. Payment methods already vary at runtime through `PaymentMethod`, and more external gateways would have added branching to the service. A gateway factory keeps provider object creation isolated while preserving the existing public payment API.
 
 ### Files Modified
-
-Planned:
 
 - `src/payment/payment-gateway.interface.ts`
 - `src/payment/vnpay-payment.gateway.ts`
@@ -33,113 +32,125 @@ Planned:
 
 ### Before
 
-`PaymentService` directly constructed the VNPay SDK client in its constructor and owned provider-specific URL building and callback verification.
+`PaymentService` constructed `VNPay` in its constructor and embedded VNPay-specific URL building and callback verification directly in service methods.
 
 ### After
 
-Planned: provider-specific gateway creation will move to a factory. `PaymentService` remains the public API and delegates provider behavior to the selected gateway.
+`PaymentGatewayFactory` creates a `PaymentGateway` for runtime payment methods. `VnpayPaymentGateway` owns VNPay SDK configuration, payment URL building, and callback verification. `PaymentService` remains the compatibility facade for existing controllers.
 
 ## Builder
 
 ### Reason
 
-Order creation constructs Prisma order data in multiple places, repeating fields such as buyer/seller/contact/payment/status/total. The object has several optional fields and default values (`postalCode`, `paymentMethod`, initial statuses), making a small builder useful.
+Direct order creation and cart checkout both assembled Prisma order create payloads inline. The payload has several defaulted or optional fields: payment method, payment status, order status, postal code, and total price. A focused builder removes duplication without changing the transaction workflow.
 
 ### Files Modified
 
-Planned:
-
 - `src/order/builders/order-draft.builder.ts`
-- `src/order/order.service.ts`
 - `src/order/builders/order-draft.builder.spec.ts`
+- `src/order/order.service.ts`
 
 ### Before
 
-Direct order creation and cart checkout both assembled Prisma order payloads inline.
+`OrderService.create` and `OrderService.createFromCart` repeated order data construction with the same default values.
 
 ### After
 
-Planned: both flows will use a shared builder that preserves the existing defaults and output shape.
+`OrderDraftBuilder` centralizes order draft construction and default values. Both order creation flows call the builder and continue to create order items, shipments, and stock updates as before.
 
 ## Strategy
 
 ### Reason
 
-`SellerReportService` contains switch statements for time range selection and period grouping. These are business algorithms selected by runtime values and are good Strategy candidates.
+`SellerReportService` selected date range and revenue grouping behavior through switch statements. These are runtime-selected algorithms, so Strategy improves extension points without adding database or controller churn.
 
 ### Files Modified
 
-Planned:
-
 - `src/sellerReport/strategies/report-date-range.strategy.ts`
 - `src/sellerReport/strategies/revenue-grouping.strategy.ts`
-- `src/sellerReport/sellerReport.service.ts`
 - `src/sellerReport/strategies/report-strategies.spec.ts`
+- `src/sellerReport/sellerReport.service.ts`
 
 ### Before
 
-Report date ranges and revenue period keys were selected with switch statements inside the service.
+Report start dates, sampling intervals, and revenue period keys were calculated inside `SellerReportService` switch blocks.
 
 ### After
 
-Planned: strategies will encapsulate the algorithms and the service will select them by key.
+Report date range and grouping strategies encapsulate those algorithms. `SellerReportService` delegates to the selected strategy and keeps its response shape unchanged.
 
 ## State
 
 ### Reason
 
-Order behavior changes based on `OrderStatus`. `updateStatus` and `cancelOrder` encode this with conditional/switch logic that should live with explicit state objects.
+Order behavior changes according to `OrderStatus`: pending orders ship, shipped orders deliver, delivered/cancelled orders are terminal, and terminal orders cannot be cancelled. This status-dependent behavior belongs in explicit state objects.
 
 ### Files Modified
 
-Planned:
-
 - `src/order/state/order-state.interface.ts`
 - `src/order/state/order-state.factory.ts`
-- `src/order/order.service.ts`
 - `src/order/state/order-state.factory.spec.ts`
+- `src/order/order.service.ts`
 
 ### Before
 
-`OrderService` switched on `order.status` to decide the next status and checked status combinations for cancellation.
+`OrderService.updateStatus` used a switch on `order.status`, and `cancelOrder` checked terminal statuses inline.
 
 ### After
 
-Planned: state classes will own transition and cancellation rules, and `OrderService` will delegate decisions.
+`OrderStateFactory` resolves the current state object. State classes own transition and cancellation rules, while `OrderService` applies the returned decision inside the existing transaction flow.
 
 ## Observer/Event
 
 ### Reason
 
-Order and payment workflows create notifications directly. Multiple side effects already react to the same business events: seller notification, customer order confirmation, status update, cancellation, and payment success. Moving these to observers reduces coupling while preserving synchronous behavior.
+Order and payment workflows directly created notifications. Notifications are side effects of business events, and several workflows may eventually need more reactions such as email, analytics, or websocket broadcasts. A small synchronous domain event publisher decouples event emission from notification handling without adding a new dependency.
 
 ### Files Modified
-
-Planned:
 
 - `src/events/domain-event.interface.ts`
 - `src/events/domain-event-publisher.service.ts`
 - `src/events/events.module.ts`
+- `src/events/domain-event-publisher.service.spec.ts`
 - `src/notification/observers/order-notification.observer.ts`
 - `src/notification/observers/payment-notification.observer.ts`
+- `src/notification/notification.module.ts`
+- `src/order/order.module.ts`
 - `src/order/order.service.ts`
+- `src/payment/payment.module.ts`
 - `src/payment/payment.service.ts`
-- `src/app.module.ts`
-- `src/events/domain-event-publisher.service.spec.ts`
 
 ### Before
 
-`OrderService` and `PaymentService` directly created notification rows as part of their workflows.
+`OrderService` and `PaymentService` called notification creation directly after order creation, status updates, cancellation, and successful payment callbacks.
 
 ### After
 
-Planned: services will publish domain events. Notification observers will subscribe and perform the same notification writes.
+Services publish domain events such as `order.placed`, `order.confirmed`, `order.status.advanced`, `order.cancelled`, and `payment.succeeded`. Notification observers subscribe to those events and create the same notification messages as before.
 
 ## Rejected Patterns
 
-- Factory Method for every Prisma model service: rejected because CRUD service construction is not runtime-variable.
-- Builder for simple DTOs such as address, review, and shipment: rejected because their construction is straightforward and schema validation already keeps it readable.
-- Strategy for ordinary validation and exception handling: rejected because Zod schemas and Nest exceptions are already appropriate.
-- State for seller approval status: rejected because current behavior only updates a stored value; there is no meaningful status-dependent behavior beyond equality checks.
-- Observer/Event for reporting and read-only queries: rejected because there are no side effects to decouple.
-- Repository pattern: rejected because Prisma is already used consistently as the data mapper and introducing repositories would be a broad compatibility risk without solving the identified problems.
+- Factory Method for every Prisma service: rejected because CRUD service creation is static and Nest dependency injection already handles object creation.
+- Builder for simple DTOs such as address, review, shipment, and notification: rejected because schemas and method calls are already clear.
+- Strategy for validation: rejected because Zod schemas already express validation rules cleanly.
+- State for seller approval: rejected because the current seller status behavior is just storage/equality checks, not state-specific behavior.
+- Observer/Event for read-only reporting: rejected because reports have no side effects to decouple.
+- Repository pattern: rejected because Prisma is already the data mapper, and introducing repositories would be broad churn unrelated to the identified pain points.
+
+## Tests
+
+- `npm test -- --runInBand`
+- Result: 12 test suites passed, 20 tests passed.
+
+## Risks Introduced
+
+- The in-process event publisher is synchronous. This preserves existing behavior, but long-running observers would slow the originating request.
+- Notification observers depend on Nest module initialization. If a new module publishes events without importing `EventsModule`, events will not be available for injection.
+- Payment gateway support is intentionally limited to VNPAY because COD and VIETQR do not currently use external gateway clients.
+
+## Future Refactoring Recommendations
+
+- Move direct Prisma imports behind injectable data services only where testability or transaction boundaries require it.
+- Replace placeholder/mock seller report history generation with persisted inventory and sales history tables.
+- Add real integration tests for order checkout, payment callback, and notification observer flows.
+- Consider `@nestjs/event-emitter` only if asynchronous or cross-module event handling grows beyond the current lightweight publisher.
