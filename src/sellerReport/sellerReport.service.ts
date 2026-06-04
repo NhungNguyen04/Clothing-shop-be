@@ -1,6 +1,8 @@
 import { prisma } from '@/prisma/prisma';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
+import { getReportDateRangeStrategy, ReportTimeRange } from './strategies/report-date-range.strategy';
+import { getRevenueGroupingStrategy, RevenueGroupBy } from './strategies/revenue-grouping.strategy';
 
 @Injectable()
 export class SellerReportService {
@@ -173,7 +175,7 @@ export class SellerReportService {
   async getProductInventoryHistory(
     sellerId: string, 
     productId: string, 
-    timeRange: 'week' | 'month' | 'year' = 'week'
+    timeRange: ReportTimeRange = 'week'
   ) {
     // Verify product belongs to seller
     const product = await prisma.product.findFirst({
@@ -189,21 +191,8 @@ export class SellerReportService {
 
     // Calculate start date based on time range
     const now = new Date();
-    let startDate: Date;
-    
-    switch (timeRange) {
-      case 'week':
-        startDate = new Date(now.setDate(now.getDate() - 7));
-        break;
-      case 'month':
-        startDate = new Date(now.setMonth(now.getMonth() - 1));
-        break;
-      case 'year':
-        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-        break;
-      default:
-        startDate = new Date(now.setDate(now.getDate() - 7));
-    }
+    const rangeStrategy = getReportDateRangeStrategy(timeRange);
+    const startDate = rangeStrategy.getStartDate(now);
 
     // In a real application, you would query historical inventory data from a separate table
     // For demonstration purposes, we'll generate mock data
@@ -223,31 +212,12 @@ export class SellerReportService {
     currentStock: number, 
     startDate: Date, 
     endDate: Date, 
-    timeRange: 'week' | 'month' | 'year'
+    timeRange: ReportTimeRange
   ) {
     const data: { date: string; value: number }[] = [];
     const dayDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
-    let interval: number;
-    let format: string;
-    
-    switch (timeRange) {
-      case 'week':
-        interval = 1; // 1 day
-        format = 'yyyy-MM-dd';
-        break;
-      case 'month':
-        interval = 1; // 1 day
-        format = 'yyyy-MM-dd';
-        break;
-      case 'year':
-        interval = 30; // ~1 month
-        format = 'yyyy-MM';
-        break;
-      default:
-        interval = 1;
-        format = 'yyyy-MM-dd';
-    }
+    const interval = getReportDateRangeStrategy(timeRange).getSamplingIntervalDays();
     
     for (let i = 0; i <= dayDiff; i += interval) {
       const date = new Date(startDate);
@@ -267,25 +237,11 @@ export class SellerReportService {
   }
 
   // Helper method for generating mock sales history
-  private generateMockSalesHistory(startDate: Date, endDate: Date, timeRange: 'week' | 'month' | 'year') {
+  private generateMockSalesHistory(startDate: Date, endDate: Date, timeRange: ReportTimeRange) {
     const data: { date: string; value: number }[] = [];
     const dayDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
-    let interval: number;
-    
-    switch (timeRange) {
-      case 'week':
-        interval = 1; // 1 day
-        break;
-      case 'month':
-        interval = 1; // 1 day
-        break;
-      case 'year':
-        interval = 30; // ~1 month
-        break;
-      default:
-        interval = 1;
-    }
+    const interval = getReportDateRangeStrategy(timeRange).getSamplingIntervalDays();
     
     for (let i = 0; i <= dayDiff; i += interval) {
       const date = new Date(startDate);
@@ -303,7 +259,7 @@ export class SellerReportService {
     return data;
   }
 
-  async getRevenueReport(sellerId: string, startDate?: string, endDate?: string, groupBy: 'day' | 'week' | 'month' = 'day') {
+  async getRevenueReport(sellerId: string, startDate?: string, endDate?: string, groupBy: RevenueGroupBy = 'day') {
     // Default to last 30 days if no dates provided
     const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
@@ -525,3 +481,4 @@ export class SellerReportService {
     return statusCounts;
   }
 }
+
