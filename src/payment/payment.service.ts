@@ -2,10 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { prisma } from '@/prisma/prisma';
 import { PaymentGatewayFactory } from './payment-gateway.factory';
+import { DomainEventName } from '../events/domain-event.interface';
+import { DomainEventPublisher } from '../events/domain-event-publisher.service';
 
 @Injectable()
 export class PaymentService {
-  constructor(private readonly paymentGatewayFactory: PaymentGatewayFactory) {}
+  constructor(
+    private readonly paymentGatewayFactory: PaymentGatewayFactory,
+    private readonly events: DomainEventPublisher,
+  ) {}
 
   /**
    * Create a payment URL for VNPAY
@@ -78,12 +83,9 @@ export class PaymentService {
         
         console.log(`Payment successful: Order ${orderId}, Transaction ID: ${transactionId}, Date: ${payDate}`);
         
-        await prisma.notification.create({
-          data: {
-            userId: order.userId,
-            message: `Your payment for order ${orderId} was successful.`,
-            isRead: false
-          }
+        await this.events.publish({
+          name: DomainEventName.PaymentSucceeded,
+          payload: { orderId, userId: order.userId },
         });
         
         return { 
@@ -153,12 +155,9 @@ export class PaymentService {
         
         console.log(`IPN Success: Order ${orderId}, Transaction ID: ${transactionId}, Date: ${params['vnp_PayDate']}`);
         
-        await prisma.notification.create({
-          data: {
-            userId: order.userId,
-            message: `Your payment for order ${orderId} was successful.`,
-            isRead: false
-          }
+        await this.events.publish({
+          name: DomainEventName.PaymentSucceeded,
+          payload: { orderId, userId: order.userId },
         });
         
         return { rspCode: '00', message: 'Success' };
@@ -173,3 +172,4 @@ export class PaymentService {
     }
   }
 }
+

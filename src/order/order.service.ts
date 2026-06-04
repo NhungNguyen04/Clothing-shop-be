@@ -4,11 +4,12 @@ import { prisma } from '@/prisma/prisma';
 import { Order, OrderItem, OrderStatus } from '@prisma/client';
 import { OrderDraftBuilder } from './builders/order-draft.builder';
 import { OrderStateFactory } from './state/order-state.factory';
-import { NotificationService } from '../notification/notification.service';
+import { DomainEventName } from '../events/domain-event.interface';
+import { DomainEventPublisher } from '../events/domain-event-publisher.service';
 
 @Injectable()
 export class OrderService {
-  constructor(private notificationService: NotificationService) {}
+  constructor(private readonly events: DomainEventPublisher) {}
 
   // Create a new order with order items
   async create(createOrderDto: CreateOrderInput): Promise<Order> {
@@ -79,16 +80,14 @@ export class OrderService {
       return order;
     });
 
-    // Create notification for seller about new order
-    await this.notificationService.createNotification({
-      userId: createOrderDto.sellerId,
-      message: `New order #${newOrder.id} has been placed.`,
+    await this.events.publish({
+      name: DomainEventName.OrderPlaced,
+      payload: { orderId: newOrder.id, sellerId: createOrderDto.sellerId },
     });
 
-    // Create notification for customer about order confirmation
-    await this.notificationService.createNotification({
-      userId: createOrderDto.userId,
-      message: `Your order #${newOrder.id} has been confirmed and is being processed.`,
+    await this.events.publish({
+      name: DomainEventName.OrderConfirmed,
+      payload: { orderId: newOrder.id, userId: createOrderDto.userId },
     });
 
     return newOrder;
@@ -208,20 +207,18 @@ export class OrderService {
 
       orders.push(order);
 
-      // Send notifications
-      await this.notificationService.createNotification({
-        userId: sellerId,
-        message: `New order #${order.id} has been placed.`,
+      await this.events.publish({
+        name: DomainEventName.OrderPlaced,
+        payload: { orderId: order.id, sellerId },
       });
     }
 
     // Recalculate cart total value after removing selected items
     await this.recalculateCartTotal(cartId);
 
-    // Send notification to customer
-    await this.notificationService.createNotification({
-      userId,
-      message: `Your order${orders.length > 1 ? 's have' : ' has'} been confirmed and ${orders.length > 1 ? 'are' : 'is'} being processed.`,
+    await this.events.publish({
+      name: DomainEventName.OrderConfirmed,
+      payload: { userId, orderCount: orders.length },
     });
 
     return orders;
@@ -352,11 +349,10 @@ export class OrderService {
         });
       }
 
-      // Send notification about order status update
       if (updateOrderDto.status && updateOrderDto.status !== order.status) {
-        await this.notificationService.createNotification({
-          userId: order.userId,
-          message: `Order #${orderId} status has been updated to ${updateOrderDto.status}.`
+        await this.events.publish({
+          name: DomainEventName.OrderStatusPatched,
+          payload: { orderId, userId: order.userId, status: updateOrderDto.status },
         });
       }
 
@@ -393,22 +389,7 @@ export class OrderService {
     // First, find the order
     const order = await this.findOne(orderId);
 
-    // Determine the next status
-    let nextStatus: OrderStatus;
-    switch (order.status) {
-      case OrderStatus.PENDING:
-        nextStatus = OrderStatus.SHIPPED;
-        break;
-      case OrderStatus.SHIPPED:
-        nextStatus = OrderStatus.DELIVERED;
-        break;
-      case OrderStatus.DELIVERED:
-        throw new Error('Order is already delivered. No further status update possible.');
-      case OrderStatus.CANCELLED:
-        throw new Error('Order is cancelled. No further status update possible.');
-      default:
-        throw new Error('Invalid order status.');
-    }
+    const nextStatus = OrderStateFactory.from(order.status).nextStatus();
 
     // Update the order status
     return await prisma.$transaction(async (tx) => {
@@ -423,10 +404,9 @@ export class OrderService {
         }
       });
 
-      // Send notification about status update
-      await this.notificationService.createNotification({
-        userId: updatedOrder.userId,
-        message: `Your order #${orderId} status has been updated to ${nextStatus}.`
+      await this.events.publish({
+        name: DomainEventName.OrderStatusAdvanced,
+        payload: { orderId, userId: updatedOrder.userId, status: nextStatus },
       });
 
       return updatedOrder;
@@ -437,9 +417,9 @@ export class OrderService {
     // First, find the order
     const order = await this.findOne(orderId);
 
-    // Check if the order can be cancelled
-    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.DELIVERED) {
-      throw new Error('Order cannot be cancelled as it is already cancelled or delivered.');
+    const orderState = OrderStateFactory.from(order.status);
+    if (!orderState.canCancel()) {
+      throw new Error(orderState.cancellationErrorMessage());
     }
 
     // Update the order status to CANCELLED
@@ -455,14 +435,15 @@ export class OrderService {
         }
       });
 
-      // Send notification about cancellation
-      await this.notificationService.createNotification({
-        userId: updatedOrder.userId,
-        message: `Your order #${orderId} has been cancelled.`
+      await this.events.publish({
+        name: DomainEventName.OrderCancelled,
+        payload: { orderId, userId: updatedOrder.userId },
       });
 
       return updatedOrder;
     });
   }
 }
+
+
 
