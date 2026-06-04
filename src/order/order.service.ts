@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@/prisma/prisma';
 import { Order, OrderItem, OrderStatus } from '@prisma/client';
 import { OrderDraftBuilder } from './builders/order-draft.builder';
+import { OrderStateFactory } from './state/order-state.factory';
 import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
@@ -464,3 +465,4 @@ export class OrderService {
     });
   }
 }
+
